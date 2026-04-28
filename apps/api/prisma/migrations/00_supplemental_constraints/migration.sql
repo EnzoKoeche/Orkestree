@@ -126,3 +126,69 @@ CREATE UNIQUE INDEX udx_one_default_proposal_template
 CREATE UNIQUE INDEX udx_one_default_pdf_template
   ON "PdfTemplate" ("companyId", "type")
   WHERE "isDefault" = true;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- SECTION 4: Service-requests bounded context
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- CustomField(companyId, id): FK target for RequestFieldValue.
+-- Relies on CustomField.@@unique([companyId, code]) — but we need (companyId, id).
+ALTER TABLE "CustomField"
+  ADD CONSTRAINT uq_custom_field_company_id
+  UNIQUE ("companyId", "id");
+
+-- ServiceRequest(companyId, id): FK target for child tables.
+-- @@unique([companyId, number]) already created by Prisma schema.
+ALTER TABLE "ServiceRequest"
+  ADD CONSTRAINT uq_service_request_company_id
+  UNIQUE ("companyId", "id");
+
+-- ServiceRequest → ServiceType: tenant consistency.
+-- Relies on ServiceType UNIQUE(companyId, id) from Prisma schema.
+ALTER TABLE "ServiceRequest"
+  ADD CONSTRAINT fk_service_request_company_service_type
+  FOREIGN KEY ("companyId", "serviceTypeId")
+  REFERENCES "ServiceType" ("companyId", "id")
+  ON DELETE RESTRICT;
+
+-- ServiceRequest → Workflow: tenant consistency.
+ALTER TABLE "ServiceRequest"
+  ADD CONSTRAINT fk_service_request_company_workflow
+  FOREIGN KEY ("companyId", "workflowId")
+  REFERENCES "Workflow" ("companyId", "id")
+  ON DELETE RESTRICT;
+
+-- ServiceRequest → WorkflowStage (currentStageId): tenant consistency.
+ALTER TABLE "ServiceRequest"
+  ADD CONSTRAINT fk_service_request_company_stage
+  FOREIGN KEY ("companyId", "currentStageId")
+  REFERENCES "WorkflowStage" ("companyId", "id")
+  ON DELETE RESTRICT;
+
+-- RequestFieldValue → ServiceRequest: tenant consistency with cascade delete.
+ALTER TABLE "RequestFieldValue"
+  ADD CONSTRAINT fk_field_value_company_request
+  FOREIGN KEY ("companyId", "requestId")
+  REFERENCES "ServiceRequest" ("companyId", "id")
+  ON DELETE CASCADE;
+
+-- RequestFieldValue → CustomField: tenant consistency with restrict delete.
+ALTER TABLE "RequestFieldValue"
+  ADD CONSTRAINT fk_field_value_company_custom_field
+  FOREIGN KEY ("companyId", "customFieldId")
+  REFERENCES "CustomField" ("companyId", "id")
+  ON DELETE RESTRICT;
+
+-- RequestStageHistory → ServiceRequest: tenant consistency with cascade delete.
+ALTER TABLE "RequestStageHistory"
+  ADD CONSTRAINT fk_stage_history_company_request
+  FOREIGN KEY ("companyId", "requestId")
+  REFERENCES "ServiceRequest" ("companyId", "id")
+  ON DELETE CASCADE;
+
+-- RequestAssignment → ServiceRequest: tenant consistency with cascade delete.
+ALTER TABLE "RequestAssignment"
+  ADD CONSTRAINT fk_assignment_company_request
+  FOREIGN KEY ("companyId", "requestId")
+  REFERENCES "ServiceRequest" ("companyId", "id")
+  ON DELETE CASCADE;

@@ -156,6 +156,9 @@ enum AuditOperation {
   ACTIVATE
   DEACTIVATE
   REORDER
+  TRANSITION  // stage transition on a ServiceRequest
+  ASSIGN      // manual assignment change on a ServiceRequest
+  CANCEL      // cancellation of a ServiceRequest
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -218,6 +221,10 @@ model Company {
   roleFieldPermissions     RoleFieldPermission[]
   userFieldOverrides       UserFieldPermissionOverride[]
   configAuditLogs          ConfigAuditLog[]
+  serviceRequests          ServiceRequest[]
+  requestFieldValues       RequestFieldValue[]
+  requestStageHistories    RequestStageHistory[]
+  requestAssignments       RequestAssignment[]
 
   @@index([taxId])
 }
@@ -242,6 +249,11 @@ model CompanyMembership {
   userPermissionOverrides UserPermissionOverride[]
   userFieldOverrides      UserFieldPermissionOverride[]
   roundRobinCursorsAsLast RoundRobinCursor[]
+  requestsAsAssignee      ServiceRequest[]      @relation("RequestAssignee")
+  requestsCreated         ServiceRequest[]      @relation("RequestCreator")
+  stageHistoriesAsActor   RequestStageHistory[] @relation("StageHistoryActor")
+  assignmentsAsTarget     RequestAssignment[]   @relation("AssignmentTarget")
+  assignmentsAsActor      RequestAssignment[]   @relation("AssignmentActor")
 
   @@unique([companyId, userId])
   @@index([companyId])
@@ -271,14 +283,15 @@ model ServiceType {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company      Company       @relation(fields: [companyId], references: [id])
-  workflow     Workflow?     @relation(fields: [workflowId], references: [id])
-  customFields CustomField[]
+  company         Company          @relation(fields: [companyId], references: [id])
+  workflow        Workflow?        @relation(fields: [workflowId], references: [id])
+  customFields    CustomField[]
+  serviceRequests ServiceRequest[]
 
   @@unique([companyId, code])
   @@index([companyId])
   @@index([companyId, isActive])
-  // Raw SQL: UNIQUE ("companyId", "id") → FK target for CustomField
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for CustomField and ServiceRequest
   // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
 }
 
@@ -304,14 +317,16 @@ model CustomField {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  company     Company             @relation(fields: [companyId], references: [id])
-  serviceType ServiceType?        @relation(fields: [serviceTypeId], references: [id])
-  options     CustomFieldOption[]
+  company            Company              @relation(fields: [companyId], references: [id])
+  serviceType        ServiceType?         @relation(fields: [serviceTypeId], references: [id])
+  options            CustomFieldOption[]
+  requestFieldValues RequestFieldValue[]
 
   @@unique([companyId, code])
   @@index([companyId, target])
   @@index([companyId, target, serviceTypeId])
   @@index([companyId, isActive])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for RequestFieldValue
   // Raw SQL: FK (companyId, serviceTypeId) → ServiceType(companyId, id)
 }
 
@@ -344,15 +359,16 @@ model Workflow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company      Company           @relation(fields: [companyId], references: [id])
-  stages       WorkflowStage[]
-  transitions  StageTransition[]
-  serviceTypes ServiceType[]
+  company         Company           @relation(fields: [companyId], references: [id])
+  stages          WorkflowStage[]
+  transitions     StageTransition[]
+  serviceTypes    ServiceType[]
+  serviceRequests ServiceRequest[]
 
   @@unique([companyId, code])
   @@index([companyId])
   @@index([companyId, isDefault])
-  // Raw SQL: UNIQUE ("companyId", "id") → FK target for WorkflowStage, StageTransition
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for WorkflowStage, StageTransition, ServiceRequest
   // Raw SQL: UNIQUE INDEX WHERE isDefault = true → exactly one default per company
 }
 
@@ -379,18 +395,21 @@ model WorkflowStage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company       Company             @relation(fields: [companyId], references: [id])
-  workflow      Workflow            @relation(fields: [workflowId], references: [id])
-  assigneeRules StageAssigneeRule[]
-  outbound      StageTransition[]   @relation("TransitionFrom")
-  inbound       StageTransition[]   @relation("TransitionTo")
+  company                  Company              @relation(fields: [companyId], references: [id])
+  workflow                 Workflow             @relation(fields: [workflowId], references: [id])
+  assigneeRules            StageAssigneeRule[]
+  outbound                 StageTransition[]    @relation("TransitionFrom")
+  inbound                  StageTransition[]    @relation("TransitionTo")
+  serviceRequestsAsCurrent ServiceRequest[]     @relation("ServiceRequestCurrentStage")
+  stageHistoriesAsFrom     RequestStageHistory[] @relation("StageHistoryFrom")
+  stageHistoriesAsTo       RequestStageHistory[] @relation("StageHistoryTo")
 
   @@unique([workflowId, code])
   @@unique([workflowId, id]) // FK target for StageTransition.fromStageId / toStageId
   @@index([companyId])
   @@index([workflowId, sortOrder])
   @@index([companyId, isActive])
-  // Raw SQL: UNIQUE ("companyId", "id") → FK target for StageAssigneeRule
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for StageAssigneeRule and ServiceRequest.currentStageId
   // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
   // Raw SQL: UNIQUE INDEX ON ("workflowId") WHERE isInitial = true
 }
@@ -575,4 +594,133 @@ model ConfigAuditLog {
   @@index([companyId, entityType, entityId])
   @@index([companyId, actorId])
   @@index([companyId, createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SERVICE-REQUESTS BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── SERVICE REQUESTS ──────────────────────────────────────────────────────
+// number: sequential per company. Generated via pg_advisory_xact_lock inside
+// the creation transaction — see ServiceRequestsService.createServiceRequest.
+// workflowId: denormalized at creation; immutable after creation.
+// isCancelled: out-of-band terminal flag; does not go through stage machine.
+// clientId: nullable; FK → Client when that module is implemented.
+// UNIQUE("companyId","id"): FK target for child tables via raw SQL.
+
+model ServiceRequest {
+  id                    String    @id @default(cuid())
+  companyId             String
+  number                Int
+  serviceTypeId         String
+  workflowId            String
+  currentStageId        String
+  clientId              String?
+  title                 String
+  description           String?
+  assignedMembershipId  String?
+  isCancelled           Boolean   @default(false)
+  cancellationReason    String?
+  createdByMembershipId String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  company              Company              @relation(fields: [companyId], references: [id])
+  serviceType          ServiceType          @relation(fields: [serviceTypeId], references: [id])
+  workflow             Workflow             @relation(fields: [workflowId], references: [id])
+  currentStage         WorkflowStage        @relation("ServiceRequestCurrentStage", fields: [currentStageId], references: [id])
+  assignedMembership   CompanyMembership?   @relation("RequestAssignee", fields: [assignedMembershipId], references: [id])
+  createdByMembership  CompanyMembership    @relation("RequestCreator", fields: [createdByMembershipId], references: [id])
+  fieldValues          RequestFieldValue[]
+  stageHistory         RequestStageHistory[]
+  assignments          RequestAssignment[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([companyId, currentStageId])
+  @@index([companyId, serviceTypeId])
+  @@index([companyId, assignedMembershipId])
+  @@index([companyId, isCancelled])
+  @@index([companyId, createdAt])
+  @@index([companyId, createdByMembershipId])
+  // Raw SQL: UNIQUE ("companyId","id") → FK target for child tables
+  // Raw SQL: FK (companyId, serviceTypeId) → ServiceType(companyId, id)
+  // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
+  // Raw SQL: FK (companyId, currentStageId) → WorkflowStage(companyId, id)
+}
+
+// ── REQUEST FIELD VALUES ──────────────────────────────────────────────────
+// Typed columns per value kind. JSON avoided: values must be queryable,
+// type-safe, and migration-safe when field types are audited.
+// valueMulti: String[] for MULTISELECT; other types use their own column.
+// Composite FKs via raw SQL enforce cross-table tenant consistency.
+
+model RequestFieldValue {
+  id            String    @id @default(cuid())
+  companyId     String
+  requestId     String
+  customFieldId String
+  valueText     String?
+  valueNumber   Decimal?
+  valueBoolean  Boolean?
+  valueDate     DateTime?
+  valueMulti    String[]
+
+  company     Company        @relation(fields: [companyId], references: [id])
+  request     ServiceRequest @relation(fields: [requestId], references: [id])
+  customField CustomField    @relation(fields: [customFieldId], references: [id])
+
+  @@unique([requestId, customFieldId])
+  @@index([companyId, requestId])
+  @@index([customFieldId])
+  // Raw SQL: FK (companyId, requestId) → ServiceRequest(companyId, id) ON DELETE CASCADE
+  // Raw SQL: FK (companyId, customFieldId) → CustomField(companyId, id) ON DELETE RESTRICT
+}
+
+// ── REQUEST STAGE HISTORY ─────────────────────────────────────────────────
+// Append-only. fromStageId = null on initial placement.
+// This IS the stage audit — no separate ConfigAuditLog entry needed for transitions.
+// actorMembershipId references CompanyMembership so history survives userId changes.
+
+model RequestStageHistory {
+  id                String   @id @default(cuid())
+  companyId         String
+  requestId         String
+  fromStageId       String?
+  toStageId         String
+  actorMembershipId String
+  note              String?
+  createdAt         DateTime @default(now())
+
+  company         Company           @relation(fields: [companyId], references: [id])
+  request         ServiceRequest    @relation(fields: [requestId], references: [id])
+  fromStage       WorkflowStage?    @relation("StageHistoryFrom", fields: [fromStageId], references: [id])
+  toStage         WorkflowStage     @relation("StageHistoryTo", fields: [toStageId], references: [id])
+  actorMembership CompanyMembership @relation("StageHistoryActor", fields: [actorMembershipId], references: [id])
+
+  @@index([companyId, requestId])
+  @@index([companyId, requestId, createdAt])
+  // Raw SQL: FK (companyId, requestId) → ServiceRequest(companyId, id) ON DELETE CASCADE
+}
+
+// ── REQUEST ASSIGNMENTS ───────────────────────────────────────────────────
+// Append-only assignment log. Current assignee is ServiceRequest.assignedMembershipId.
+// Provides full assignment history for audit and timeline UI.
+
+model RequestAssignment {
+  id                     String   @id @default(cuid())
+  companyId              String
+  requestId              String
+  membershipId           String
+  assignedByMembershipId String
+  createdAt              DateTime @default(now())
+
+  company              Company           @relation(fields: [companyId], references: [id])
+  request              ServiceRequest    @relation(fields: [requestId], references: [id])
+  membership           CompanyMembership @relation("AssignmentTarget", fields: [membershipId], references: [id])
+  assignedByMembership CompanyMembership @relation("AssignmentActor", fields: [assignedByMembershipId], references: [id])
+
+  @@index([companyId, requestId])
+  @@index([companyId, membershipId])
+  // Raw SQL: FK (companyId, requestId) → ServiceRequest(companyId, id) ON DELETE CASCADE
 }

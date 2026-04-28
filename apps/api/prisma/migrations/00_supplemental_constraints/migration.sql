@@ -192,3 +192,47 @@ ALTER TABLE "RequestAssignment"
   FOREIGN KEY ("companyId", "requestId")
   REFERENCES "ServiceRequest" ("companyId", "id")
   ON DELETE CASCADE;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- SECTION 5: Clients bounded context
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Client(companyId, id): FK target for ServiceRequest and ClientFieldValue.
+-- @@unique([companyId, number]) already created by Prisma schema.
+ALTER TABLE "Client"
+  ADD CONSTRAINT uq_client_company_id
+  UNIQUE ("companyId", "id");
+
+-- One taxId per company (partial: only when taxId is set).
+CREATE UNIQUE INDEX udx_client_tax_id
+  ON "Client" ("companyId", "taxId")
+  WHERE "taxId" IS NOT NULL;
+
+-- BUSINESS clients must have legalName.
+ALTER TABLE "Client"
+  ADD CONSTRAINT chk_client_business_legal_name
+  CHECK (type != 'BUSINESS' OR "legalName" IS NOT NULL);
+
+-- ServiceRequest → Client: tenant consistency with restrict delete.
+-- Relies on Client UNIQUE(companyId, id) above.
+-- clientId is nullable; FK applies only when set.
+ALTER TABLE "ServiceRequest"
+  ADD CONSTRAINT fk_service_request_company_client
+  FOREIGN KEY ("companyId", "clientId")
+  REFERENCES "Client" ("companyId", "id")
+  ON DELETE RESTRICT
+  DEFERRABLE INITIALLY DEFERRED;
+
+-- ClientFieldValue → Client: tenant consistency with cascade delete.
+ALTER TABLE "ClientFieldValue"
+  ADD CONSTRAINT fk_client_field_value_company_client
+  FOREIGN KEY ("companyId", "clientId")
+  REFERENCES "Client" ("companyId", "id")
+  ON DELETE CASCADE;
+
+-- ClientFieldValue → CustomField: tenant consistency with restrict delete.
+ALTER TABLE "ClientFieldValue"
+  ADD CONSTRAINT fk_client_field_value_company_custom_field
+  FOREIGN KEY ("companyId", "customFieldId")
+  REFERENCES "CustomField" ("companyId", "id")
+  ON DELETE RESTRICT;

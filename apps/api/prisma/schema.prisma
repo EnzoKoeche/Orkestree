@@ -225,6 +225,8 @@ model Company {
   requestFieldValues       RequestFieldValue[]
   requestStageHistories    RequestStageHistory[]
   requestAssignments       RequestAssignment[]
+  clients                  Client[]
+  clientFieldValues        ClientFieldValue[]
 
   @@index([taxId])
 }
@@ -321,12 +323,13 @@ model CustomField {
   serviceType        ServiceType?         @relation(fields: [serviceTypeId], references: [id])
   options            CustomFieldOption[]
   requestFieldValues RequestFieldValue[]
+  clientFieldValues  ClientFieldValue[]
 
   @@unique([companyId, code])
   @@index([companyId, target])
   @@index([companyId, target, serviceTypeId])
   @@index([companyId, isActive])
-  // Raw SQL: UNIQUE ("companyId", "id") → FK target for RequestFieldValue
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for RequestFieldValue and ClientFieldValue
   // Raw SQL: FK (companyId, serviceTypeId) → ServiceType(companyId, id)
 }
 
@@ -631,6 +634,7 @@ model ServiceRequest {
   currentStage         WorkflowStage        @relation("ServiceRequestCurrentStage", fields: [currentStageId], references: [id])
   assignedMembership   CompanyMembership?   @relation("RequestAssignee", fields: [assignedMembershipId], references: [id])
   createdByMembership  CompanyMembership    @relation("RequestCreator", fields: [createdByMembershipId], references: [id])
+  client               Client?              @relation(fields: [clientId], references: [id])
   fieldValues          RequestFieldValue[]
   stageHistory         RequestStageHistory[]
   assignments          RequestAssignment[]
@@ -639,6 +643,7 @@ model ServiceRequest {
   @@index([companyId])
   @@index([companyId, currentStageId])
   @@index([companyId, serviceTypeId])
+  @@index([companyId, clientId])
   @@index([companyId, assignedMembershipId])
   @@index([companyId, isCancelled])
   @@index([companyId, createdAt])
@@ -647,6 +652,7 @@ model ServiceRequest {
   // Raw SQL: FK (companyId, serviceTypeId) → ServiceType(companyId, id)
   // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
   // Raw SQL: FK (companyId, currentStageId) → WorkflowStage(companyId, id)
+  // Raw SQL: FK (companyId, clientId) → Client(companyId, id)
 }
 
 // ── REQUEST FIELD VALUES ──────────────────────────────────────────────────
@@ -723,4 +729,103 @@ model RequestAssignment {
   @@index([companyId, requestId])
   @@index([companyId, membershipId])
   // Raw SQL: FK (companyId, requestId) → ServiceRequest(companyId, id) ON DELETE CASCADE
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIENTS BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── CLIENT ───────────────────────────────────────────────────────────────
+// type: immutable after creation. Drives display-name semantics and fiscal
+//   field applicability.
+//
+// name: maintained display name. Computed and stored by the service:
+//   INDIVIDUAL → provided full name
+//   BUSINESS   → tradeName (if set) else legalName
+//   Enables fast sort/search without runtime joins.
+//
+// taxId: nullable; company-scoped partial unique index enforces one-per-company
+//   when set. Format validated at DTO layer (CPF=11 digits, CNPJ=14 digits).
+//
+// number: sequential per company, generated via pg_advisory_xact_lock.
+//
+// UNIQUE("companyId","id"): FK target for ServiceRequest and ClientFieldValue
+//   via raw SQL composite foreign keys.
+
+model Client {
+  id                    String     @id @default(cuid())
+  companyId             String
+  number                Int        // sequential per company
+  type                  ClientType // immutable after creation
+  name                  String     // display name: full name (PF) or tradeName ?? legalName (PJ)
+  email                 String?
+  phone                 String?
+  notes                 String?
+  isActive              Boolean    @default(true)
+
+  // INDIVIDUAL only
+  dateOfBirth           DateTime?
+
+  // BUSINESS only
+  legalName             String?    // razão social; required when type = BUSINESS (DB CHECK via raw SQL)
+  tradeName             String?    // nome fantasia; when set, name is derived from this
+  stateRegistration     String?    // IE
+  municipalRegistration String?    // IM
+
+  // Shared fiscal document (CPF for PF, CNPJ for PJ)
+  taxId                 String?
+
+  // Flat address — mirrors Company model convention
+  addressStreet         String?
+  addressNumber         String?
+  addressComplement     String?
+  addressNeighborhood   String?
+  addressCity           String?
+  addressState          String?    // 2-char state code
+  addressPostalCode     String?
+  addressCountry        String?    @default("BR")
+
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  company         Company            @relation(fields: [companyId], references: [id])
+  serviceRequests ServiceRequest[]
+  fieldValues     ClientFieldValue[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([companyId, type])
+  @@index([companyId, isActive])
+  @@index([companyId, name])
+  // Raw SQL: UNIQUE ("companyId","id") → FK target for ServiceRequest and ClientFieldValue
+  // Raw SQL: UNIQUE ("companyId","taxId") WHERE "taxId" IS NOT NULL → one taxId per company
+  // Raw SQL: CHECK (type != 'BUSINESS' OR "legalName" IS NOT NULL)
+}
+
+// ── CLIENT FIELD VALUES ───────────────────────────────────────────────────
+// Mirrors RequestFieldValue. Typed columns per value kind.
+// CLIENT fields are not service-type-scoped (CustomField.serviceTypeId = null
+// for CLIENT target fields is the expected pattern).
+// Composite FKs via raw SQL enforce cross-table tenant consistency.
+
+model ClientFieldValue {
+  id            String    @id @default(cuid())
+  companyId     String
+  clientId      String
+  customFieldId String
+  valueText     String?
+  valueNumber   Decimal?
+  valueBoolean  Boolean?
+  valueDate     DateTime?
+  valueMulti    String[]
+
+  company     Company     @relation(fields: [companyId], references: [id])
+  client      Client      @relation(fields: [clientId], references: [id])
+  customField CustomField @relation(fields: [customFieldId], references: [id])
+
+  @@unique([clientId, customFieldId])
+  @@index([companyId, clientId])
+  @@index([customFieldId])
+  // Raw SQL: FK (companyId, clientId) → Client(companyId, id) ON DELETE CASCADE
+  // Raw SQL: FK (companyId, customFieldId) → CustomField(companyId, id) ON DELETE RESTRICT
 }

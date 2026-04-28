@@ -15,6 +15,12 @@ export class CreateServiceRequestDto {
     @MaxLength(64)
     serviceTypeId: string;
 
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(64)
+    clientId?: string;
+
     @IsString()
     @MinLength(1)
     @MaxLength(256)

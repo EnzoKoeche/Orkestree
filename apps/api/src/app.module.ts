@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
@@ -10,6 +11,7 @@ import { ServiceRequestsModule } from './service-requests/service-requests.modul
         PrismaModule,
         CompanyConfigModule,
         ServiceRequestsModule,
+        ClientsModule,
     ],
 })
 export class AppModule { }

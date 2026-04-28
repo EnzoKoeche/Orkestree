@@ -52,6 +52,9 @@ const LIST_SELECT = {
     currentStage: {
         select: { id: true, code: true, name: true, color: true, isFinal: true },
     },
+    client: {
+        select: { id: true, number: true, name: true, type: true },
+    },
     assignedMembership: {
         select: MEMBERSHIP_USER_SELECT,
     },
@@ -125,6 +128,17 @@ export class ServiceRequestsService {
                 throw new NotFoundException('Service type not found or is not active.');
             }
 
+            // ── 1b. Validate client if provided (must be active, must belong to company)
+            if (dto.clientId) {
+                const client = await tx.client.findFirst({
+                    where: { id: dto.clientId, companyId, isActive: true },
+                    select: { id: true },
+                });
+                if (!client) {
+                    throw new NotFoundException('Client not found or is not active.');
+                }
+            }
+
             // ── 2. Resolve workflow
             let workflowId = serviceType.workflowId;
             if (!workflowId) {
@@ -181,6 +195,7 @@ export class ServiceRequestsService {
                     serviceTypeId: dto.serviceTypeId,
                     workflowId,
                     currentStageId: initialStage.id,
+                    clientId: dto.clientId ?? null,
                     title: dto.title,
                     description: dto.description ?? null,
                     createdByMembershipId: actorMembership.id,

@@ -1,0 +1,578 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum Role {
+  OWNER
+  ADMIN
+  FINANCEIRO
+  OPERACIONAL
+  CLIENTE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+enum ClientType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DECIMAL
+  DATE
+  DATETIME
+  SELECT
+  MULTISELECT
+  BOOLEAN
+  FILE
+  PHONE
+  EMAIL
+  URL
+}
+
+enum CustomFieldTarget {
+  REQUEST
+  CLIENT
+  PROPOSAL
+  SERVICE_ORDER
+  CONTACT
+}
+
+enum AssignmentType {
+  ROLE
+  USER
+  ROUND_ROBIN
+  MANUAL
+}
+
+enum PdfTemplateType {
+  PROPOSAL
+  INVOICE
+  REPORT
+  SERVICE_ORDER
+}
+
+enum TemplateEngine {
+  HANDLEBARS
+  BLOCKS
+}
+
+enum AutomationTrigger {
+  REQUEST_CREATED
+  STAGE_CHANGED
+  PROPOSAL_SENT
+  PROPOSAL_APPROVED
+  PROPOSAL_REJECTED
+  PAYMENT_RECEIVED
+  PAYMENT_OVERDUE
+  TASK_COMPLETED
+  DOCUMENT_UPLOADED
+}
+
+enum AutomationActionType {
+  SEND_EMAIL
+  SEND_NOTIFICATION
+  ASSIGN_USER
+  CHANGE_STAGE
+  CREATE_TASK
+  GENERATE_DOCUMENT
+  WEBHOOK
+}
+
+enum ConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  GREATER_THAN
+  LESS_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN_OR_EQUAL
+  IS_NULL
+  IS_NOT_NULL
+  IN
+  NOT_IN
+}
+
+enum CompanyResource {
+  REQUEST
+  CLIENT
+  PROPOSAL
+  FINANCIAL
+  TASK
+  DOCUMENT
+  CHAT
+  SETTINGS
+  COMPANY_CONFIG
+  USER_MANAGEMENT
+  AUDIT_LOG
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  APPROVE
+  REJECT
+  PUBLISH
+  EXPORT
+  ASSIGN
+}
+
+// Sensitive financial fields enforced by FieldFilterInterceptor.
+// Resolution order: UserFieldPermissionOverride > RoleFieldPermission > FIELD_DEFAULTS
+enum SensitiveField {
+  INTERNAL_COST
+  MARGIN
+  SUPPLIER_PRICE
+  GROSS_PROFIT
+  NET_PROFIT
+  PAYMENT_METHOD
+  BANK_ACCOUNT
+  FISCAL_KEY
+}
+
+enum AuditOperation {
+  CREATE
+  UPDATE
+  DELETE
+  ACTIVATE
+  DEACTIVATE
+  REORDER
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IDENTITY BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Global user identity. Not tenant-scoped.
+// Tenant-specific context lives in CompanyMembership.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships             CompanyMembership[]
+  configAuditLogs         ConfigAuditLog[]
+  userPermissionOverrides UserPermissionOverride[]
+  userFieldOverrides      UserFieldPermissionOverride[]
+
+  @@index([email])
+}
+
+model Company {
+  id                   String   @id @default(cuid())
+  legalName            String
+  tradeName            String?
+  taxId                String   @unique // CNPJ
+  stateRegistration    String?
+  municipalRegistration String?
+  financialEmail       String
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Fiscal address (structured, not JSON)
+  addressStreet     String
+  addressNumber     String
+  addressComplement String?
+  addressNeighborhood String
+  addressCity       String
+  addressState      String  // 2-char state code
+  addressPostalCode String
+  addressCountry    String  @default("BR")
+
+  memberships              CompanyMembership[]
+  serviceTypes             ServiceType[]
+  customFields             CustomField[]
+  workflows                Workflow[]
+  workflowStages           WorkflowStage[]
+  stageTransitions         StageTransition[]
+  stageAssigneeRules       StageAssigneeRule[]
+  roundRobinCursors        RoundRobinCursor[]
+  rolePermissions          RolePermission[]
+  userPermissionOverrides  UserPermissionOverride[]
+  roleFieldPermissions     RoleFieldPermission[]
+  userFieldOverrides       UserFieldPermissionOverride[]
+  configAuditLogs          ConfigAuditLog[]
+
+  @@index([taxId])
+}
+
+// Tenant-scoped membership. This is the identity boundary per company.
+// Permissions, assignments, and overrides reference this, not raw userId.
+// When a user leaves and rejoins, a new membership is created.
+// Old overrides are orphaned but safe — they will not match the new membership.
+model CompanyMembership {
+  id        String           @id @default(cuid())
+  companyId String
+  userId    String
+  role      Role
+  status    MembershipStatus @default(INVITED)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  stageAssigneeRules      StageAssigneeRule[]
+  userPermissionOverrides UserPermissionOverride[]
+  userFieldOverrides      UserFieldPermissionOverride[]
+  roundRobinCursorsAsLast RoundRobinCursor[]
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+  @@index([companyId, role])
+  @@index([companyId, status])
+  @@index([userId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPANY-CONFIG BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── SERVICE TYPES ─────────────────────────────────────────────────────────
+// workflowId is nullable: null → runtime-resolve to company's isDefault Workflow.
+// Composite FK (companyId, workflowId) → Workflow(companyId, id) added via raw SQL.
+// @@unique([companyId, id]) added via raw SQL (FK target for CustomField).
+
+model ServiceType {
+  id          String   @id @default(cuid())
+  companyId   String
+  code        String   // immutable after creation; referenced in automation conditions
+  name        String   // mutable display name
+  description String?
+  workflowId  String?  // null → runtime-resolve default workflow
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  workflow     Workflow?     @relation(fields: [workflowId], references: [id])
+  customFields CustomField[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, isActive])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for CustomField
+  // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
+}
+
+// ── CUSTOM FIELDS ─────────────────────────────────────────────────────────
+// code: single stable machine-readable identifier (immutable).
+// label: mutable display name.
+// serviceTypeId: only meaningful when target = REQUEST.
+// Composite FK (companyId, serviceTypeId) → ServiceType(companyId, id) added via raw SQL.
+
+model CustomField {
+  id            String            @id @default(cuid())
+  companyId     String
+  code          String            // immutable; referenced in automation dot-notation
+  label         String            // mutable display name
+  target        CustomFieldTarget
+  serviceTypeId String?           // only set when target = REQUEST
+  type          CustomFieldType
+  isRequired    Boolean           @default(false)
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  placeholder   String?
+  helpText      String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  company     Company             @relation(fields: [companyId], references: [id])
+  serviceType ServiceType?        @relation(fields: [serviceTypeId], references: [id])
+  options     CustomFieldOption[]
+
+  @@unique([companyId, code])
+  @@index([companyId, target])
+  @@index([companyId, target, serviceTypeId])
+  @@index([companyId, isActive])
+  // Raw SQL: FK (companyId, serviceTypeId) → ServiceType(companyId, id)
+}
+
+model CustomFieldOption {
+  id            String      @id @default(cuid())
+  customFieldId String
+  label         String      // mutable display name
+  value         String      // immutable stable value; referenced in automation conditions
+  sortOrder     Int         @default(0)
+
+  customField CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([customFieldId, value])
+  @@index([customFieldId])
+}
+
+// ── WORKFLOWS ─────────────────────────────────────────────────────────────
+// isDefault: exactly one per company. Enforced by partial unique index via raw SQL.
+// Composite UNIQUE(companyId, id) added via raw SQL as FK target for WorkflowStage.
+// Deferred: structuralVersion + WorkflowVersion snapshot for copy-on-write.
+
+model Workflow {
+  id          String   @id @default(cuid())
+  companyId   String
+  code        String   // immutable; unique per company
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company           @relation(fields: [companyId], references: [id])
+  stages       WorkflowStage[]
+  transitions  StageTransition[]
+  serviceTypes ServiceType[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, isDefault])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for WorkflowStage, StageTransition
+  // Raw SQL: UNIQUE INDEX WHERE isDefault = true → exactly one default per company
+}
+
+// ── WORKFLOW STAGES ───────────────────────────────────────────────────────
+// companyId: denormalized for direct tenant-isolation queries on hot read paths.
+// Integrity: composite FK (companyId, workflowId) → Workflow(companyId, id) via raw SQL.
+// isInitial: exactly one per workflow. Partial unique index via raw SQL.
+// isFinal: no uniqueness constraint; multiple terminal stages are valid.
+// UNIQUE(workflowId, id): FK target for StageTransition fromStageId/toStageId.
+// UNIQUE(companyId, id): FK target for StageAssigneeRule.
+
+model WorkflowStage {
+  id          String   @id @default(cuid())
+  companyId   String   // denormalized; composite FK enforces match with workflow.companyId
+  workflowId  String
+  code        String   // immutable; unique per workflow
+  name        String
+  description String?
+  color       String?  // hex color for Kanban display
+  sortOrder   Int
+  isInitial   Boolean  @default(false) // exactly one per workflow — partial unique index
+  isFinal     Boolean  @default(false) // multiple allowed (done, cancelled, rejected)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company       Company             @relation(fields: [companyId], references: [id])
+  workflow      Workflow            @relation(fields: [workflowId], references: [id])
+  assigneeRules StageAssigneeRule[]
+  outbound      StageTransition[]   @relation("TransitionFrom")
+  inbound       StageTransition[]   @relation("TransitionTo")
+
+  @@unique([workflowId, code])
+  @@unique([workflowId, id]) // FK target for StageTransition.fromStageId / toStageId
+  @@index([companyId])
+  @@index([workflowId, sortOrder])
+  @@index([companyId, isActive])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for StageAssigneeRule
+  // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
+  // Raw SQL: UNIQUE INDEX ON ("workflowId") WHERE isInitial = true
+}
+
+// ── STAGE TRANSITIONS ─────────────────────────────────────────────────────
+// Defines legal state machine edges. A Request can only advance via a declared transition.
+// fromStageId and toStageId are DB-enforced to belong to the declared workflowId
+// via composite FKs (workflowId, fromStageId) and (workflowId, toStageId) in raw SQL.
+// The initial stage has no inbound transitions; requests are placed there at creation.
+// Deferred: StageTransitionAllowedRole for per-role transition restrictions.
+
+model StageTransition {
+  id               String   @id @default(cuid())
+  companyId        String   // denormalized; composite FK → Workflow(companyId, id)
+  workflowId       String
+  fromStageId      String
+  toStageId        String
+  requiresApproval Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company   Company       @relation(fields: [companyId], references: [id])
+  workflow  Workflow      @relation(fields: [workflowId], references: [id])
+  fromStage WorkflowStage @relation("TransitionFrom", fields: [fromStageId], references: [id])
+  toStage   WorkflowStage @relation("TransitionTo", fields: [toStageId], references: [id])
+
+  @@unique([workflowId, fromStageId, toStageId])
+  @@index([companyId])
+  @@index([workflowId, fromStageId]) // hot path: resolve valid next stages for a request
+  // Raw SQL: FK (companyId, workflowId) → Workflow(companyId, id)
+  // Raw SQL: FK (workflowId, fromStageId) → WorkflowStage(workflowId, id)
+  // Raw SQL: FK (workflowId, toStageId) → WorkflowStage(workflowId, id)
+}
+
+// ── STAGE ASSIGNEE RULES ──────────────────────────────────────────────────
+// References CompanyMembership, not raw User — enforces tenant-scoped assignment.
+// ROLE: any active membership with the given role.
+// USER: a specific membership; membershipId must be set.
+// ROUND_ROBIN: pool-based rotation; state tracked in RoundRobinCursor child record.
+// MANUAL: no auto-assignment; membershipId must be null.
+// Composite FK (companyId, stageId) → WorkflowStage(companyId, id) via raw SQL.
+
+model StageAssigneeRule {
+  id             String         @id @default(cuid())
+  companyId      String         // composite FK enforces stage belongs to same company
+  stageId        String
+  assignmentType AssignmentType
+  role           Role?          // set only when assignmentType = ROLE
+  membershipId   String?        // set only when assignmentType = USER
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  company          Company            @relation(fields: [companyId], references: [id])
+  stage            WorkflowStage      @relation(fields: [stageId], references: [id])
+  membership       CompanyMembership? @relation(fields: [membershipId], references: [id])
+  roundRobinCursor RoundRobinCursor?
+
+  @@index([companyId])
+  @@index([companyId, stageId])
+  @@index([membershipId])
+  // Raw SQL: FK (companyId, stageId) → WorkflowStage(companyId, id)
+}
+
+// ── ROUND ROBIN CURSOR ────────────────────────────────────────────────────
+// Persistent assignment state for ROUND_ROBIN rules.
+// Must be updated with SELECT FOR UPDATE inside the assignment transaction
+// to prevent concurrent calls from reading the same cursor state.
+// lastMembershipId = null → no assignment made yet; start from first active member.
+// If lastMembershipId references a deactivated membership:
+//   resolver treats it as position -1 and restarts from the first active member.
+// If the eligible pool is empty: log warning, fall back to MANUAL, do not throw.
+
+model RoundRobinCursor {
+  id               String    @id @default(cuid())
+  companyId        String
+  ruleId           String    @unique
+  lastMembershipId String?
+  updatedAt        DateTime  @updatedAt
+
+  company    Company            @relation(fields: [companyId], references: [id])
+  rule       StageAssigneeRule  @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  membership CompanyMembership? @relation(fields: [lastMembershipId], references: [id])
+
+  @@index([companyId])
+}
+
+// ── PERMISSIONS: RESOURCE LEVEL (Layer A) ────────────────────────────────
+// System defaults are hardcoded in SYSTEM_DEFAULTS (PermissionResolverService).
+// DB tables store company-specific overrides only.
+// Resolution: UserPermissionOverride > RolePermission > SYSTEM_DEFAULTS
+
+model RolePermission {
+  id        String           @id @default(cuid())
+  companyId String
+  role      Role
+  resource  CompanyResource
+  action    PermissionAction
+  allowed   Boolean
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, role, resource, action])
+  @@index([companyId, role])
+}
+
+model UserPermissionOverride {
+  id           String           @id @default(cuid())
+  companyId    String
+  membershipId String           // CompanyMembership, not raw userId
+  resource     CompanyResource
+  action       PermissionAction
+  allowed      Boolean
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  company    Company           @relation(fields: [companyId], references: [id])
+  membership CompanyMembership @relation(fields: [membershipId], references: [id])
+
+  @@unique([companyId, membershipId, resource, action])
+  @@index([companyId, membershipId])
+}
+
+// ── PERMISSIONS: FIELD LEVEL (Layer B) ───────────────────────────────────
+// Enforced by FieldFilterInterceptor using SENSITIVE_FIELD_REGISTRY.
+// Resolution: UserFieldPermissionOverride > RoleFieldPermission > FIELD_DEFAULTS
+
+model RoleFieldPermission {
+  id        String         @id @default(cuid())
+  companyId String
+  role      Role
+  field     SensitiveField
+  allowed   Boolean
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, role, field])
+  @@index([companyId, role])
+}
+
+model UserFieldPermissionOverride {
+  id           String         @id @default(cuid())
+  companyId    String
+  membershipId String
+  field        SensitiveField
+  allowed      Boolean
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  company    Company           @relation(fields: [companyId], references: [id])
+  membership CompanyMembership @relation(fields: [membershipId], references: [id])
+
+  @@unique([companyId, membershipId, field])
+  @@index([companyId, membershipId])
+}
+
+// ── CONFIGURATION AUDIT LOG ───────────────────────────────────────────────
+// Append-only. Written within the same Prisma transaction as the config change.
+// actorId references global User (not membershipId) so records survive membership removal.
+// Deferred: PARTITION BY RANGE (createdAt) when rows exceed 1M per tenant.
+
+model ConfigAuditLog {
+  id         String         @id @default(cuid())
+  companyId  String
+  actorId    String         // global userId
+  operation  AuditOperation
+  entityType String         // "WorkflowStage", "AutomationRule", etc.
+  entityId   String
+  entityCode String?        // stable code for human-readable audit UIs
+  before     Json?          // snapshot before change; null for CREATE
+  after      Json?          // snapshot after change; null for DELETE
+  createdAt  DateTime       @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  actor   User    @relation(fields: [actorId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, actorId])
+  @@index([companyId, createdAt])
+}

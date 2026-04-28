@@ -1,0 +1,15 @@
+{
+    "name": "orkestree",
+    "version": "0.1.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:api": "yarn workspace @orkestree/api dev",
+        "build:api": "yarn workspace @orkestree/api build",
+        "migrate": "yarn workspace @orkestree/api migrate",
+        "studio": "yarn workspace @orkestree/api studio"
+    }
+}

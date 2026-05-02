@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Global resets / defaults that don't belong inside a component.
+
+   The visual system is small on purpose: components in src/components/ui own
+   their own classes, and pages compose them. New design tokens must go in
+   tailwind.config.ts so they show up in the IDE.
+───────────────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+    height: 100%;
+    background-color: theme('colors.surface.canvas');
+    color: theme('colors.ink.DEFAULT');
+    font-feature-settings: 'cv11', 'ss01';
+}
+
+/* Numeric tabular alignment for tables / monetary amounts. */
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring used by Button / Input — kept consistent across primitives. */
+.focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1;
+}

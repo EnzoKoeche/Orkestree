@@ -1,0 +1,18 @@
+# Build / dev artifacts
+.next/
+out/
+node_modules/
+
+# Next.js
+next-env.d.ts.bak
+
+# Logs
+*.log
+
+# Env files (any local overrides; commit only the example)
+.env
+.env.local
+.env.*.local
+
+# Type-checker cache
+*.tsbuildinfo

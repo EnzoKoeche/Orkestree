@@ -1,0 +1,461 @@
+'use client';
+
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
+import { ProposalActions } from '@/components/feature/ProposalActions';
+import { ProposalPdfButton } from '@/components/feature/ProposalPdfButton';
+import {
+    ProposalStatusBadge,
+    proposalStatusLabel,
+} from '@/components/feature/ProposalStatusBadge';
+import { PageContainer, PageHeader } from '@/components/shell/PageContainer';
+import { Card } from '@/components/ui/Card';
+import { ErrorState, LoadingState } from '@/components/ui/States';
+import { Table } from '@/components/ui/Table';
+import { proposalsApi } from '@/lib/api';
+import {
+    formatCurrency,
+    formatDate,
+    formatDateTime,
+    formatNumber,
+    formatPercent,
+    fullName,
+} from '@/lib/format';
+import { useRequiredSession } from '@/lib/session';
+import { useResource } from '@/lib/use-resource';
+import { ProposalDetail } from '@/types/domain';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proposal detail page.
+//
+// Composes:
+//   - PageHeader with status badge
+//   - ProposalActions (status-aware send / approve / reject / cancel)
+//   - ProposalPdfButton (gated on APPROVED + pdfGeneratedAt)
+//   - Items table (role-safe — internalCost shown when present)
+//   - Totals panel (subtotal, discount, total; totalCost only when present)
+//   - Status history timeline
+//
+// `internalCost` and `totalCost` are surfaced ONLY if the backend included
+// them in the response. The backend strips them at the Prisma `select`
+// layer for non-OWNER/ADMIN roles, so the absence of the field is the
+// authoritative signal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function ProposalDetailPage() {
+    const session = useRequiredSession();
+    const params = useParams<{ proposalId: string }>();
+    const proposalId = params.proposalId;
+
+    const { data, error, loading, refetch } = useResource(
+        ['proposal', session.companyId, proposalId],
+        (signal) => proposalsApi.get(session.companyId, proposalId, signal),
+    );
+
+    // Local optimistic state so a successful action shows the new status
+    // immediately. The list refetch on next mount picks up the canonical row.
+    const [overlay, setOverlay] = useState<ProposalDetail | null>(null);
+
+    if (loading) {
+        return (
+            <PageContainer>
+                <LoadingState />
+            </PageContainer>
+        );
+    }
+    if (error) {
+        return (
+            <PageContainer>
+                <ErrorState error={error} onRetry={refetch} />
+            </PageContainer>
+        );
+    }
+    if (!data) return null;
+
+    const proposal = overlay ?? data;
+    const showInternalCost = proposal.items.some((i) => i.internalCost !== undefined);
+
+    return (
+        <PageContainer>
+            <PageHeader
+                breadcrumb={
+                    <Link href="/proposals" className="hover:underline">
+                        Proposals
+                    </Link>
+                }
+                title={
+                    <span className="flex items-center gap-3">
+                        <span className="font-mono text-sm text-ink-subtle">#{proposal.number}</span>
+                        <span className="truncate">{proposal.title}</span>
+                    </span>
+                }
+                description={
+                    <span>
+                        Created {formatDateTime(proposal.createdAt)} by{' '}
+                        {fullName(proposal.createdByMembership?.user)}
+                        {proposal.serviceRequest ? (
+                            <>
+                                <span className="mx-2 text-ink-faint">·</span>
+                                <Link
+                                    href={`/requests/${proposal.serviceRequest.id}`}
+                                    className="hover:underline"
+                                >
+                                    Request #{proposal.serviceRequest.number}
+                                </Link>
+                            </>
+                        ) : null}
+                    </span>
+                }
+                actions={
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <ProposalStatusBadge status={proposal.status} />
+                        <ProposalPdfButton
+                            proposal={proposal}
+                            companyId={session.companyId}
+                        />
+                        <ProposalActions
+                            proposal={proposal}
+                            companyId={session.companyId}
+                            onMutated={(next) => setOverlay(next)}
+                        />
+                    </div>
+                }
+            />
+
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <div className="lg:col-span-2 flex flex-col gap-5">
+                    <Card>
+                        <Card.Header
+                            title="Items"
+                            description={
+                                proposal.items.length === 0
+                                    ? 'No items added yet.'
+                                    : `${proposal.items.length} item${proposal.items.length === 1 ? '' : 's'}`
+                            }
+                        />
+                        <Card.Body padded={false}>
+                            {proposal.items.length === 0 ? (
+                                <p className="px-5 py-6 text-sm text-ink-subtle">
+                                    Items will appear here when added to this proposal.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <Table.Head>
+                                        <tr>
+                                            <Table.Cell head>Description</Table.Cell>
+                                            <Table.Cell head>Unit</Table.Cell>
+                                            <Table.Cell head align="right">Qty</Table.Cell>
+                                            <Table.Cell head align="right">Unit price</Table.Cell>
+                                            <Table.Cell head align="right">Discount</Table.Cell>
+                                            {showInternalCost ? (
+                                                <Table.Cell head align="right">Internal cost</Table.Cell>
+                                            ) : null}
+                                            <Table.Cell head align="right">Subtotal</Table.Cell>
+                                        </tr>
+                                    </Table.Head>
+                                    <Table.Body>
+                                        {proposal.items.map((item) => (
+                                            <Table.Row key={item.id}>
+                                                <Table.Cell>
+                                                    <span className="block max-w-md truncate font-medium text-ink">
+                                                        {item.description}
+                                                    </span>
+                                                </Table.Cell>
+                                                <Table.Cell>
+                                                    <span className="text-sm text-ink-subtle">
+                                                        {item.unit ?? '—'}
+                                                    </span>
+                                                </Table.Cell>
+                                                <Table.Cell align="right">
+                                                    <span className="tabular-nums text-sm text-ink">
+                                                        {formatNumber(item.quantity, 2)}
+                                                    </span>
+                                                </Table.Cell>
+                                                <Table.Cell align="right">
+                                                    <span className="tabular-nums text-sm text-ink">
+                                                        {formatCurrency(item.unitPrice)}
+                                                    </span>
+                                                </Table.Cell>
+                                                <Table.Cell align="right">
+                                                    <span className="tabular-nums text-sm text-ink-subtle">
+                                                        {formatPercent(item.discountPct)}
+                                                    </span>
+                                                </Table.Cell>
+                                                {showInternalCost ? (
+                                                    <Table.Cell align="right">
+                                                        <span className="tabular-nums text-sm text-ink-subtle">
+                                                            {formatCurrency(item.internalCost ?? null)}
+                                                        </span>
+                                                    </Table.Cell>
+                                                ) : null}
+                                                <Table.Cell align="right">
+                                                    <span className="tabular-nums font-medium text-ink">
+                                                        {formatCurrency(item.subtotal)}
+                                                    </span>
+                                                </Table.Cell>
+                                            </Table.Row>
+                                        ))}
+                                    </Table.Body>
+                                </Table>
+                            )}
+                        </Card.Body>
+                    </Card>
+
+                    <Card>
+                        <Card.Header title="Status history" />
+                        <Card.Body padded={false}>
+                            {proposal.statusHistory.length === 0 ? (
+                                <p className="px-5 py-6 text-sm text-ink-subtle">
+                                    No transitions recorded yet.
+                                </p>
+                            ) : (
+                                <ol className="divide-y divide-border">
+                                    {proposal.statusHistory.map((entry) => (
+                                        <li
+                                            key={entry.id}
+                                            className="flex items-start gap-3 px-5 py-3"
+                                        >
+                                            <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-state-info" />
+                                            <div className="flex-1">
+                                                <div className="flex flex-wrap items-baseline gap-2">
+                                                    <span className="font-medium text-ink">
+                                                        {entry.fromStatus
+                                                            ? `${proposalStatusLabel(entry.fromStatus)} → ${proposalStatusLabel(entry.toStatus)}`
+                                                            : `Created as ${proposalStatusLabel(entry.toStatus)}`}
+                                                    </span>
+                                                    <span className="text-xs text-ink-subtle">
+                                                        {formatDateTime(entry.createdAt)}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-ink-subtle">
+                                                    by {fullName(entry.actorMembership?.user)}
+                                                </div>
+                                                {entry.note ? (
+                                                    <p className="mt-1 text-sm text-ink">{entry.note}</p>
+                                                ) : null}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+                        </Card.Body>
+                    </Card>
+
+                    {proposal.notes || proposal.clientNotes ? (
+                        <Card>
+                            <Card.Header title="Notes" />
+                            <Card.Body>
+                                <dl className="space-y-4 text-sm">
+                                    {proposal.notes ? (
+                                        <div>
+                                            <dt className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
+                                                Internal notes
+                                            </dt>
+                                            <dd className="mt-1 whitespace-pre-wrap text-ink">
+                                                {proposal.notes}
+                                            </dd>
+                                        </div>
+                                    ) : null}
+                                    {proposal.clientNotes ? (
+                                        <div>
+                                            <dt className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
+                                                Client-facing notes
+                                            </dt>
+                                            <dd className="mt-1 whitespace-pre-wrap text-ink">
+                                                {proposal.clientNotes}
+                                            </dd>
+                                        </div>
+                                    ) : null}
+                                </dl>
+                            </Card.Body>
+                        </Card>
+                    ) : null}
+                </div>
+
+                <div className="flex flex-col gap-5">
+                    <Card>
+                        <Card.Header title="Totals" />
+                        <Card.Body>
+                            <dl className="space-y-2 text-sm">
+                                <Row label="Subtotal" value={formatCurrency(proposal.subtotal)} />
+                                {proposal.discountPct ? (
+                                    <Row
+                                        label="Discount (pct)"
+                                        value={formatPercent(proposal.discountPct)}
+                                    />
+                                ) : null}
+                                {proposal.discountAmount ? (
+                                    <Row
+                                        label="Discount (fixed)"
+                                        value={formatCurrency(proposal.discountAmount)}
+                                    />
+                                ) : null}
+                                <div className="my-2 border-t border-border" />
+                                <Row
+                                    label="Total"
+                                    value={formatCurrency(proposal.totalPrice)}
+                                    strong
+                                />
+                                {proposal.totalCost !== undefined ? (
+                                    <Row
+                                        label="Total cost"
+                                        value={formatCurrency(proposal.totalCost)}
+                                        muted
+                                    />
+                                ) : null}
+                            </dl>
+                        </Card.Body>
+                    </Card>
+
+                    <Card>
+                        <Card.Header title="Lifecycle" />
+                        <Card.Body>
+                            <dl className="grid grid-cols-1 gap-y-3 text-sm">
+                                <Detail
+                                    label="Valid until"
+                                    value={formatDate(proposal.validUntil)}
+                                />
+                                <Detail
+                                    label="Sent"
+                                    value={formatDateTime(proposal.sentAt)}
+                                />
+                                <Detail
+                                    label="Approved"
+                                    value={formatDateTime(proposal.approvedAt)}
+                                    sub={
+                                        proposal.approvedByMembership
+                                            ? `by ${fullName(proposal.approvedByMembership.user)}`
+                                            : null
+                                    }
+                                />
+                                <Detail
+                                    label="Rejected"
+                                    value={formatDateTime(proposal.rejectedAt)}
+                                    sub={
+                                        proposal.rejectedByMembership
+                                            ? `by ${fullName(proposal.rejectedByMembership.user)}`
+                                            : null
+                                    }
+                                />
+                                <Detail
+                                    label="Expired"
+                                    value={formatDateTime(proposal.expiredAt)}
+                                />
+                                <Detail
+                                    label="Cancelled"
+                                    value={formatDateTime(proposal.cancelledAt)}
+                                />
+                                <Detail
+                                    label="PDF generated"
+                                    value={formatDateTime(proposal.pdfGeneratedAt)}
+                                />
+                            </dl>
+                        </Card.Body>
+                    </Card>
+
+                    {proposal.client ? (
+                        <Card>
+                            <Card.Header title="Client" />
+                            <Card.Body>
+                                <Link
+                                    href={`/clients/${proposal.client.id}`}
+                                    className="block rounded-md border border-border px-3 py-2 transition hover:bg-surface-sunken"
+                                >
+                                    <div className="text-sm font-medium text-ink">
+                                        {proposal.client.name}
+                                    </div>
+                                    <div className="text-xs text-ink-subtle">
+                                        #{proposal.client.number} · {proposal.client.type}
+                                    </div>
+                                </Link>
+                            </Card.Body>
+                        </Card>
+                    ) : null}
+
+                    {proposal.rejectionReason ? (
+                        <Card>
+                            <Card.Header title="Rejection reason" />
+                            <Card.Body>
+                                <p className="whitespace-pre-wrap text-sm text-ink">
+                                    {proposal.rejectionReason}
+                                </p>
+                            </Card.Body>
+                        </Card>
+                    ) : null}
+
+                    {proposal.cancellationReason ? (
+                        <Card>
+                            <Card.Header title="Cancellation reason" />
+                            <Card.Body>
+                                <p className="whitespace-pre-wrap text-sm text-ink">
+                                    {proposal.cancellationReason}
+                                </p>
+                            </Card.Body>
+                        </Card>
+                    ) : null}
+                </div>
+            </div>
+        </PageContainer>
+    );
+}
+
+function Row({
+    label,
+    value,
+    strong,
+    muted,
+}: {
+    label: string;
+    value: string;
+    strong?: boolean;
+    muted?: boolean;
+}) {
+    return (
+        <div className="flex items-baseline justify-between gap-4">
+            <dt
+                className={
+                    muted
+                        ? 'text-xs uppercase tracking-wide text-ink-subtle'
+                        : 'text-sm text-ink-muted'
+                }
+            >
+                {label}
+            </dt>
+            <dd
+                className={
+                    'tabular-nums ' +
+                    (strong
+                        ? 'text-base font-semibold text-ink'
+                        : muted
+                            ? 'text-xs text-ink-subtle'
+                            : 'text-sm text-ink')
+                }
+            >
+                {value}
+            </dd>
+        </div>
+    );
+}
+
+function Detail({
+    label,
+    value,
+    sub,
+}: {
+    label: string;
+    value: string;
+    sub?: string | null;
+}) {
+    return (
+        <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
+                {label}
+            </dt>
+            <dd className="mt-0.5 text-sm text-ink">
+                {value === '—' ? <span className="text-ink-faint">—</span> : value}
+            </dd>
+            {sub ? <div className="text-xs text-ink-subtle">{sub}</div> : null}
+        </div>
+    );
+}

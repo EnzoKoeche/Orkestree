@@ -2,7 +2,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { Logger, Module, Provider } from '@nestjs/common';
 import { ConfigAuditModule } from '../../company-config/audit/config-audit.module';
 import { ProposalsModule } from '../proposals.module';
+import { ProposalPdfAccessService } from './proposal-pdf-access.service';
 import { PROPOSAL_PDF_QUEUE } from './proposal-pdf.constants';
+import { ProposalPdfController } from './proposal-pdf.controller';
 import { ProposalPdfListener } from './proposal-pdf.listener';
 import { ProposalPdfProcessor } from './proposal-pdf.processor';
 import { ProposalPdfRenderer } from './proposal-pdf.renderer';
@@ -74,6 +76,14 @@ const storageDriverProvider: Provider = {
             },
         }),
     ],
+    controllers: [
+        // Read-side endpoint surface for the rendered PDF. Mounted
+        // here (not in ProposalsController) so ProposalsModule stays
+        // free of the storage abstraction and we avoid a circular
+        // import: ProposalPdfModule already imports ProposalsModule
+        // to reuse the foundation row-level visibility helper.
+        ProposalPdfController,
+    ],
     providers: [
         // Concrete driver classes registered alongside the token so
         // Nest's DI graph holds the lifecycle hooks (OnModuleInit on the
@@ -84,6 +94,7 @@ const storageDriverProvider: Provider = {
 
         ProposalPdfRenderer,
         ProposalPdfService,
+        ProposalPdfAccessService,
         ProposalPdfProcessor,
         ProposalPdfListener,
     ],

@@ -9,6 +9,10 @@ import { SensitiveField } from '@prisma/client';
 
 export const SENSITIVE_FIELD_REGISTRY: Readonly<Record<string, SensitiveField>> = {
     internalCost: SensitiveField.INTERNAL_COST,
+    // Proposal.totalCost = SUM(item.internalCost × item.quantity).
+    // It is a derived view of internal cost data; treated identically to
+    // the per-item internal cost for visibility purposes.
+    totalCost: SensitiveField.INTERNAL_COST,
     margin: SensitiveField.MARGIN,
     supplierPrice: SensitiveField.SUPPLIER_PRICE,
     grossProfit: SensitiveField.GROSS_PROFIT,

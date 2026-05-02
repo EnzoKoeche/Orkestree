@@ -3,7 +3,9 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProposalsModule } from './proposals/proposals.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
     imports: [
@@ -12,6 +14,8 @@ import { ServiceRequestsModule } from './service-requests/service-requests.modul
         CompanyConfigModule,
         ServiceRequestsModule,
         ClientsModule,
+        TasksModule,
+        ProposalsModule,
     ],
 })
 export class AppModule { }

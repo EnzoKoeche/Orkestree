@@ -156,9 +156,32 @@ enum AuditOperation {
   ACTIVATE
   DEACTIVATE
   REORDER
-  TRANSITION  // stage transition on a ServiceRequest
-  ASSIGN      // manual assignment change on a ServiceRequest
-  CANCEL      // cancellation of a ServiceRequest
+  TRANSITION  // stage/status transition (ServiceRequest, Task)
+  ASSIGN      // assignment change (ServiceRequest, Task)
+  CANCEL      // cancellation (ServiceRequest, Task)
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -227,6 +250,12 @@ model Company {
   requestAssignments       RequestAssignment[]
   clients                  Client[]
   clientFieldValues        ClientFieldValue[]
+  tasks                    Task[]
+  taskComments             TaskComment[]
+  proposals               Proposal[]
+  proposalItems           ProposalItem[]
+  proposalStatusHistories ProposalStatusHistory[]
+  proposalFieldValues     ProposalFieldValue[]
 
   @@index([taxId])
 }
@@ -256,6 +285,13 @@ model CompanyMembership {
   stageHistoriesAsActor   RequestStageHistory[] @relation("StageHistoryActor")
   assignmentsAsTarget     RequestAssignment[]   @relation("AssignmentTarget")
   assignmentsAsActor      RequestAssignment[]   @relation("AssignmentActor")
+  tasksAsAssignee                Task[]                @relation("TaskAssignee")
+  tasksCreated                   Task[]                @relation("TaskCreator")
+  taskComments                   TaskComment[]         @relation("TaskCommentAuthor")
+  proposalsCreated               Proposal[]            @relation("ProposalCreator")
+  proposalsApproved              Proposal[]            @relation("ProposalApprover")
+  proposalsRejected              Proposal[]            @relation("ProposalRejector")
+  proposalStatusHistoriesAsActor ProposalStatusHistory[] @relation("ProposalStatusHistoryActor")
 
   @@unique([companyId, userId])
   @@index([companyId])
@@ -321,9 +357,10 @@ model CustomField {
 
   company            Company              @relation(fields: [companyId], references: [id])
   serviceType        ServiceType?         @relation(fields: [serviceTypeId], references: [id])
-  options            CustomFieldOption[]
-  requestFieldValues RequestFieldValue[]
-  clientFieldValues  ClientFieldValue[]
+  options             CustomFieldOption[]
+  requestFieldValues  RequestFieldValue[]
+  clientFieldValues   ClientFieldValue[]
+  proposalFieldValues ProposalFieldValue[]
 
   @@unique([companyId, code])
   @@index([companyId, target])
@@ -638,6 +675,8 @@ model ServiceRequest {
   fieldValues          RequestFieldValue[]
   stageHistory         RequestStageHistory[]
   assignments          RequestAssignment[]
+  tasks                Task[]
+  proposals            Proposal[]
 
   @@unique([companyId, number])
   @@index([companyId])
@@ -791,6 +830,7 @@ model Client {
   company         Company            @relation(fields: [companyId], references: [id])
   serviceRequests ServiceRequest[]
   fieldValues     ClientFieldValue[]
+  proposals       Proposal[]
 
   @@unique([companyId, number])
   @@index([companyId])
@@ -827,5 +867,238 @@ model ClientFieldValue {
   @@index([companyId, clientId])
   @@index([customFieldId])
   // Raw SQL: FK (companyId, clientId) → Client(companyId, id) ON DELETE CASCADE
+  // Raw SQL: FK (companyId, customFieldId) → CustomField(companyId, id) ON DELETE RESTRICT
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TASKS BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── TASK ──────────────────────────────────────────────────────────────────
+// Always linked to a ServiceRequest (mandatory, not optional).
+// number: sequential per company — generated via pg_advisory_xact_lock with
+//   the ':tasks' namespace to avoid contention with request/client generators.
+// status: flat enum state machine. Not configurable — tasks are too simple to
+//   justify a workflow stage graph.
+// completedAt / cancelledAt: set atomically inside the transition transaction.
+// UNIQUE("companyId","id"): FK target for TaskComment via raw SQL.
+// Composite FK (companyId, requestId) → ServiceRequest(companyId, id) via raw SQL
+//   with ON DELETE RESTRICT so requests with open tasks cannot be silently removed.
+
+model Task {
+  id                    String       @id @default(cuid())
+  companyId             String
+  requestId             String
+  number                Int          // sequential per company
+  status                TaskStatus   @default(OPEN)
+  priority              TaskPriority @default(NORMAL)
+  title                 String
+  description           String?
+  assignedMembershipId  String?
+  createdByMembershipId String
+  dueAt                 DateTime?
+  completedAt           DateTime?    // set when status → DONE; cleared on reopen
+  cancelledAt           DateTime?    // set when status → CANCELLED
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  company             Company            @relation(fields: [companyId], references: [id])
+  request             ServiceRequest     @relation(fields: [requestId], references: [id])
+  assignedMembership  CompanyMembership? @relation("TaskAssignee", fields: [assignedMembershipId], references: [id])
+  createdByMembership CompanyMembership  @relation("TaskCreator", fields: [createdByMembershipId], references: [id])
+  comments            TaskComment[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([companyId, requestId])
+  @@index([companyId, status])
+  @@index([companyId, assignedMembershipId])
+  @@index([companyId, dueAt])
+  @@index([companyId, createdAt])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for TaskComment
+  // Raw SQL: FK (companyId, requestId) → ServiceRequest(companyId, id) ON DELETE RESTRICT
+}
+
+// ── TASK COMMENT ──────────────────────────────────────────────────────────
+// Append-only operational notes. Distinct from Chat (channel-based conversations).
+// Deletion: author may delete own comment; OWNER/ADMIN may delete any comment.
+// Composite FK (companyId, taskId) → Task(companyId, id) via raw SQL ON DELETE CASCADE
+// so comments are removed atomically when a task is deleted.
+
+model TaskComment {
+  id                 String   @id @default(cuid())
+  companyId          String
+  taskId             String
+  authorMembershipId String
+  body               String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id])
+  task             Task              @relation(fields: [taskId], references: [id])
+  authorMembership CompanyMembership @relation("TaskCommentAuthor", fields: [authorMembershipId], references: [id])
+
+  @@index([companyId, taskId])
+  @@index([companyId, taskId, createdAt])
+  // Raw SQL: FK (companyId, taskId) → Task(companyId, id) ON DELETE CASCADE
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROPOSALS BOUNDED CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── PROPOSAL ──────────────────────────────────────────────────────────────
+// Always linked to a ServiceRequest (mandatory, non-nullable, immutable).
+// clientId: derived from request.clientId at creation time. Stored on the
+//   proposal independently so the client anchor survives future request edits.
+//   Nullable when the request had no client at proposal creation time.
+// number: sequential per company. Generated via pg_advisory_xact_lock with
+//   'proposals:' namespace to avoid contention with request/client/task generators.
+// status: enforced by ProposalTransitionsService state machine.
+//   Terminal states: APPROVED, REJECTED, EXPIRED, CANCELLED.
+// totalCost: sum of (item.internalCost × item.quantity). PRIVILEGED only.
+//   Stripped by FieldFilterInterceptor via SensitiveField.INTERNAL_COST.
+// discountPct / discountAmount: mutual exclusion enforced by service.
+//   If discountPct is set, effectiveDiscount = subtotal × pct / 100.
+//   If discountAmount is set, it is used directly.
+//   totalPrice = subtotal − effectiveDiscount. Recomputed on every item change.
+// UNIQUE(companyId, id): FK target for child tables via raw SQL.
+// Partial unique index WHERE status='APPROVED' ON (serviceRequestId): at most
+//   one approved proposal per request. Service catches P2002 from this index.
+
+model Proposal {
+  id                     String         @id @default(cuid())
+  companyId              String
+  serviceRequestId       String
+  clientId               String?
+  number                 Int
+  status                 ProposalStatus @default(DRAFT)
+  title                  String
+  notes                  String?        // internal; excluded from CLIENT response projection
+  clientNotes            String?        // external-facing; shown on PDF and client portal
+  discountPct            Decimal?       @db.Decimal(5, 2)
+  discountAmount         Decimal?       @db.Decimal(12, 2)
+  subtotal               Decimal        @default(0)  @db.Decimal(12, 2)
+  totalPrice             Decimal        @default(0)  @db.Decimal(12, 2)
+  totalCost              Decimal        @default(0)  @db.Decimal(12, 2)
+  validUntil             DateTime?
+  pdfUrl                 String?
+  pdfGeneratedAt         DateTime?
+  sentAt                 DateTime?
+  approvedAt             DateTime?
+  rejectedAt             DateTime?
+  expiredAt              DateTime?
+  cancelledAt            DateTime?
+  rejectionReason        String?
+  cancellationReason     String?
+  approvedByMembershipId String?
+  rejectedByMembershipId String?
+  createdByMembershipId  String
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  company              Company               @relation(fields: [companyId], references: [id])
+  serviceRequest       ServiceRequest        @relation(fields: [serviceRequestId], references: [id])
+  client               Client?               @relation(fields: [clientId], references: [id])
+  createdByMembership  CompanyMembership     @relation("ProposalCreator", fields: [createdByMembershipId], references: [id])
+  approvedByMembership CompanyMembership?    @relation("ProposalApprover", fields: [approvedByMembershipId], references: [id])
+  rejectedByMembership CompanyMembership?    @relation("ProposalRejector", fields: [rejectedByMembershipId], references: [id])
+  items                ProposalItem[]
+  statusHistory        ProposalStatusHistory[]
+  fieldValues          ProposalFieldValue[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([companyId, serviceRequestId])
+  @@index([companyId, clientId])
+  @@index([companyId, status])
+  @@index([companyId, validUntil])
+  @@index([companyId, createdAt])
+  // Raw SQL: UNIQUE ("companyId", "id") → FK target for child tables
+  // Raw SQL: FK (companyId, serviceRequestId) → ServiceRequest(companyId, id) ON DELETE RESTRICT
+  // Raw SQL: FK (companyId, clientId) → Client(companyId, id) — nullable, ON DELETE RESTRICT
+  // Raw SQL: CREATE UNIQUE INDEX udx_one_approved_proposal_per_request ON "Proposal" ("serviceRequestId") WHERE status = 'APPROVED'
+}
+
+// ── PROPOSAL ITEM ─────────────────────────────────────────────────────────
+// Line items for a Proposal. Mutable only when Proposal.status = DRAFT.
+// subtotal: stored computed value = quantity × unitPrice × (1 − discountPct/100).
+//   Recomputed by ProposalItemsService on every add/update/remove mutation.
+// internalCost: unit cost for this line (e.g. supplier price).
+//   PRIVILEGED only. Stripped by FieldFilterInterceptor (INTERNAL_COST).
+// Proposal.totalCost = SUM(item.internalCost × item.quantity).
+// Cascade delete: removing the parent Proposal removes all its items.
+
+model ProposalItem {
+  id           String   @id @default(cuid())
+  companyId    String
+  proposalId   String
+  description  String
+  unit         String?
+  quantity     Decimal  @db.Decimal(12, 4)
+  unitPrice    Decimal  @db.Decimal(12, 2)
+  discountPct  Decimal? @db.Decimal(5, 2)
+  internalCost Decimal? @db.Decimal(12, 2)
+  subtotal     Decimal  @db.Decimal(12, 2)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+
+  @@index([companyId, proposalId])
+  @@index([companyId, proposalId, sortOrder])
+  // Raw SQL: FK (companyId, proposalId) → Proposal(companyId, id) ON DELETE CASCADE
+}
+
+// ── PROPOSAL STATUS HISTORY ───────────────────────────────────────────────
+// Append-only. fromStatus = null on initial DRAFT placement.
+// Written within the same transaction as every status change.
+// Mirrors RequestStageHistory for operational consistency.
+
+model ProposalStatusHistory {
+  id                String          @id @default(cuid())
+  companyId         String
+  proposalId        String
+  fromStatus        ProposalStatus?
+  toStatus          ProposalStatus
+  actorMembershipId String
+  note              String?
+  createdAt         DateTime        @default(now())
+
+  company         Company           @relation(fields: [companyId], references: [id])
+  proposal        Proposal          @relation(fields: [proposalId], references: [id])
+  actorMembership CompanyMembership @relation("ProposalStatusHistoryActor", fields: [actorMembershipId], references: [id])
+
+  @@index([companyId, proposalId])
+  @@index([companyId, proposalId, createdAt])
+  // Raw SQL: FK (companyId, proposalId) → Proposal(companyId, id) ON DELETE CASCADE
+}
+
+// ── PROPOSAL FIELD VALUES ─────────────────────────────────────────────────
+// Custom fields with target = PROPOSAL. Not service-type-scoped.
+// Mirrors RequestFieldValue and ClientFieldValue for consistency.
+// Mutable only when Proposal.status = DRAFT.
+
+model ProposalFieldValue {
+  id            String    @id @default(cuid())
+  companyId     String
+  proposalId    String
+  customFieldId String
+  valueText     String?
+  valueNumber   Decimal?
+  valueBoolean  Boolean?
+  valueDate     DateTime?
+  valueMulti    String[]
+
+  company     Company     @relation(fields: [companyId], references: [id])
+  proposal    Proposal    @relation(fields: [proposalId], references: [id])
+  customField CustomField @relation(fields: [customFieldId], references: [id])
+
+  @@unique([proposalId, customFieldId])
+  @@index([companyId, proposalId])
+  @@index([customFieldId])
+  // Raw SQL: FK (companyId, proposalId) → Proposal(companyId, id) ON DELETE CASCADE
   // Raw SQL: FK (companyId, customFieldId) → CustomField(companyId, id) ON DELETE RESTRICT
 }

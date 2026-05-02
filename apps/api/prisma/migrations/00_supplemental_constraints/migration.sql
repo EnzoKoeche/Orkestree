@@ -236,3 +236,31 @@ ALTER TABLE "ClientFieldValue"
   FOREIGN KEY ("companyId", "customFieldId")
   REFERENCES "CustomField" ("companyId", "id")
   ON DELETE RESTRICT;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- SECTION 6: Tasks bounded context
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Task(companyId, id): FK target for TaskComment.
+-- @@unique([companyId, number]) already created by Prisma schema.
+ALTER TABLE "Task"
+  ADD CONSTRAINT uq_task_company_id
+  UNIQUE ("companyId", "id");
+
+-- Task → ServiceRequest: tenant consistency.
+-- ON DELETE RESTRICT prevents silently orphaning tasks when a request is
+-- deleted; callers must explicitly handle tasks before removing the request.
+ALTER TABLE "Task"
+  ADD CONSTRAINT fk_task_company_request
+  FOREIGN KEY ("companyId", "requestId")
+  REFERENCES "ServiceRequest" ("companyId", "id")
+  ON DELETE RESTRICT;
+
+-- TaskComment → Task: cascade delete so comments are removed atomically with
+-- their parent task. This runs before the Prisma-generated RESTRICT FK check
+-- on taskId, leaving no referencing rows for that check to block on.
+ALTER TABLE "TaskComment"
+  ADD CONSTRAINT fk_task_comment_company_task
+  FOREIGN KEY ("companyId", "taskId")
+  REFERENCES "Task" ("companyId", "id")
+  ON DELETE CASCADE;

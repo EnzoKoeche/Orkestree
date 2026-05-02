@@ -5,6 +5,7 @@ import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProposalJobsModule } from './proposals/jobs/proposal-jobs.module';
+import { ProposalPdfModule } from './proposals/pdf/proposal-pdf.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 
@@ -40,6 +41,7 @@ function parseRedisUrl(url: string): { host: string; port: number; password?: st
         ClientsModule,
         ProposalsModule,
         ProposalJobsModule,
+        ProposalPdfModule,
     ],
 })
 export class AppModule { }

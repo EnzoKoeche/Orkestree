@@ -93,6 +93,13 @@ ALTER TABLE "ProposalFieldValue"
 -- Business rule: a service request can only have one accepted proposal at a
 -- time. Other statuses (DRAFT/SENT/REJECTED/EXPIRED/CANCELLED) are unbounded.
 --
+-- The index is tenant-aware (companyId, serviceRequestId) for symmetry with
+-- every other constraint in 00_supplemental_constraints and this file.
+-- Even though serviceRequestId is globally unique by CUID, scoping the
+-- partial uniqueness to (companyId, serviceRequestId) is the canonical form
+-- in this schema and prevents accidental cross-tenant collisions if a
+-- future migration ever changes the id strategy.
+--
 -- Concurrency: catching P2002 from this index is the hard safety net for
 -- ProposalTransitionsService.approveProposal. The service also takes
 -- SELECT FOR UPDATE on the proposal row, but only the unique index protects
@@ -101,7 +108,7 @@ ALTER TABLE "ProposalFieldValue"
 -- ─────────────────────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX udx_one_approved_proposal_per_request
-  ON "Proposal" ("serviceRequestId")
+  ON "Proposal" ("companyId", "serviceRequestId")
   WHERE status = 'APPROVED';
 
 -- ─────────────────────────────────────────────────────────────────────────

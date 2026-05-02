@@ -565,11 +565,12 @@ export class ProposalsService {
     ) {
         const { companyId } = actorMembership;
 
-        if (actorMembership.role === Role.CLIENTE) {
-            // Defense-in-depth: even though CLIENTE lacks PROPOSAL.EDIT by
-            // default, never let row-level isolation be bypassed.
-            await this.assertCanReadProposal(actorMembership, proposalId);
-        }
+        // Row-level visibility is asserted unconditionally — for every role —
+        // so a permission override granting PROPOSAL.EDIT to a non-default
+        // role (e.g. CLIENTE, OPERACIONAL) cannot bypass the proposal's
+        // ownership/visibility rules. The controller's @RequirePermission
+        // already gated the resource-action; this gates the *row*.
+        await this.assertCanReadProposal(actorMembership, proposalId);
 
         await this.prisma.$transaction(async (tx) => {
             // Lock + DRAFT gate (mirrors the items service).
@@ -651,8 +652,13 @@ export class ProposalsService {
      * Throws NotFoundException if the actor cannot read the proposal.
      * Used by endpoints that bypass the standard get() (e.g. setFieldValues,
      * item endpoints) but must still respect row-level isolation.
+     *
+     * Public so the controller can call it for item-mutation endpoints
+     * before delegating to ProposalItemsService — that path otherwise has
+     * no way to enforce the CLIENTE row filter (and any future role-scoped
+     * row filter) since ProposalItemsService is intentionally tenant-only.
      */
-    private async assertCanReadProposal(
+    async assertCanReadProposal(
         actorMembership: Pick<CompanyMembership, 'id' | 'companyId' | 'userId' | 'role'>,
         proposalId: string,
     ): Promise<void> {
@@ -670,23 +676,46 @@ export class ProposalsService {
     ): Promise<Prisma.ProposalWhereInput> {
         const where: Prisma.ProposalWhereInput = { companyId: actorMembership.companyId };
 
-        if (query.serviceRequestId !== undefined) where.serviceRequestId = query.serviceRequestId;
-        if (query.clientId !== undefined) where.clientId = query.clientId;
-        if (query.status !== undefined) where.status = query.status;
-
         if (actorMembership.role === Role.CLIENTE) {
-            // CLIENTE sees only proposals attached to a service request they
-            // own AND only proposals that have left DRAFT.
-            where.serviceRequest = { createdByMembershipId: actorMembership.id };
-            where.status = { not: ProposalStatus.DRAFT };
-            // Allow further filtering by status only if the requested status
-            // is not DRAFT.
+            // ─────────────────────────────────────────────────────────────
+            // CLIENTE row-level filter — server-derived, not client-driven.
+            //
+            // Visibility is anchored on serviceRequest.createdByMembershipId
+            // matching the actor's own membership id. We DO NOT trust any
+            // caller-supplied clientId / serviceRequestId for this role:
+            //   - clientId: ignored entirely. A CLIENTE can have created
+            //     requests for several clients; the membership-level
+            //     ownership filter is the single source of truth.
+            //   - serviceRequestId: only used as an *additional* filter
+            //     on top of the membership ownership clause; it can never
+            //     widen the result set.
+            //
+            // DRAFT is always hidden from CLIENTE regardless of the
+            // requested status filter. A status filter that explicitly
+            // asks for DRAFT collapses to an empty result.
+            // ─────────────────────────────────────────────────────────────
+            const serviceRequestFilter: Prisma.ServiceRequestWhereInput = {
+                createdByMembershipId: actorMembership.id,
+                companyId: actorMembership.companyId,
+            };
+            if (query.serviceRequestId !== undefined) {
+                serviceRequestFilter.id = query.serviceRequestId;
+            }
+            where.serviceRequest = serviceRequestFilter;
+
             if (query.status === ProposalStatus.DRAFT) {
                 // Force an empty result by intersecting with an impossible id.
                 where.id = '__cliente-cannot-see-drafts__';
             } else if (query.status !== undefined) {
                 where.status = query.status;
+            } else {
+                where.status = { not: ProposalStatus.DRAFT };
             }
+            // clientId from the query is intentionally NOT applied for CLIENTE.
+        } else {
+            if (query.serviceRequestId !== undefined) where.serviceRequestId = query.serviceRequestId;
+            if (query.clientId !== undefined) where.clientId = query.clientId;
+            if (query.status !== undefined) where.status = query.status;
         }
 
         return where;
@@ -702,7 +731,13 @@ export class ProposalsService {
         };
 
         if (actorMembership.role === Role.CLIENTE) {
-            where.serviceRequest = { createdByMembershipId: actorMembership.id };
+            // Same server-derived ownership clause as resolveListWhere.
+            // A CLIENTE can only see a proposal whose linked ServiceRequest
+            // they themselves created, and never a DRAFT.
+            where.serviceRequest = {
+                createdByMembershipId: actorMembership.id,
+                companyId: actorMembership.companyId,
+            };
             where.status = { not: ProposalStatus.DRAFT };
         }
 

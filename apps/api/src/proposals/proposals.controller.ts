@@ -159,11 +159,13 @@ export class ProposalsController {
         @Param('proposalId') proposalId: string,
         @Body() dto: CreateProposalItemDto,
     ) {
-        // Verify visibility before delegating; itemsService.addItem validates
-        // tenant + DRAFT under FOR UPDATE but cannot apply CLIENTE row-level
-        // isolation on its own.
-        await this.proposalsService.getProposal(membership, proposalId);
-        await this.itemsService.addItem(membership.companyId, proposalId, dto);
+        // Row-level visibility is enforced explicitly for every role.
+        // ProposalItemsService is intentionally tenant-only and does not
+        // know about CLIENTE ownership rules; this assert is the only
+        // gate stopping a permission-override holder from mutating a
+        // proposal they cannot read.
+        await this.proposalsService.assertCanReadProposal(membership, proposalId);
+        await this.itemsService.addItem(membership, proposalId, dto);
         this.emitItemsChanged(membership.companyId, proposalId);
         return this.proposalsService.getProposal(membership, proposalId);
     }
@@ -176,8 +178,8 @@ export class ProposalsController {
         @Param('itemId') itemId: string,
         @Body() dto: UpdateProposalItemDto,
     ) {
-        await this.proposalsService.getProposal(membership, proposalId);
-        await this.itemsService.updateItem(membership.companyId, proposalId, itemId, dto);
+        await this.proposalsService.assertCanReadProposal(membership, proposalId);
+        await this.itemsService.updateItem(membership, proposalId, itemId, dto);
         this.emitItemsChanged(membership.companyId, proposalId);
         return this.proposalsService.getProposal(membership, proposalId);
     }
@@ -189,8 +191,8 @@ export class ProposalsController {
         @Param('proposalId') proposalId: string,
         @Param('itemId') itemId: string,
     ) {
-        await this.proposalsService.getProposal(membership, proposalId);
-        await this.itemsService.removeItem(membership.companyId, proposalId, itemId);
+        await this.proposalsService.assertCanReadProposal(membership, proposalId);
+        await this.itemsService.removeItem(membership, proposalId, itemId);
         this.emitItemsChanged(membership.companyId, proposalId);
         return this.proposalsService.getProposal(membership, proposalId);
     }

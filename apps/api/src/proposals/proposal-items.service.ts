@@ -3,10 +3,39 @@ import {
     NotFoundException,
     UnprocessableEntityException,
 } from '@nestjs/common';
-import { Prisma, ProposalStatus } from '@prisma/client';
+import {
+    AuditOperation,
+    CompanyMembership,
+    Prisma,
+    ProposalStatus,
+} from '@prisma/client';
+import { ConfigAuditService } from '../company-config/audit/config-audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProposalItemDto } from './dto/create-proposal-item.dto';
 import { UpdateProposalItemDto } from './dto/update-proposal-item.dto';
+
+// Actor context required for audit logging on every item mutation.
+type ActorContext = Pick<CompanyMembership, 'id' | 'companyId' | 'userId' | 'role'>;
+
+// Snapshot shape captured before/after each item mutation. All money fields
+// are stringified for stable JSON audit payloads (Decimal → text).
+type ItemSnapshot = {
+    id: string;
+    description: string;
+    unit: string | null;
+    quantity: string;
+    unitPrice: string;
+    discountPct: string | null;
+    internalCost: string | null;
+    subtotal: string;
+    sortOrder: number;
+};
+
+type ProposalTotalsSnapshot = {
+    subtotal: string;
+    totalPrice: string;
+    totalCost: string;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProposalItemsService
@@ -50,7 +79,10 @@ const ITEM_SELECT = {
 
 @Injectable()
 export class ProposalItemsService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: ConfigAuditService,
+    ) { }
 
     // ── Reads ────────────────────────────────────────────────────────────────
 
@@ -72,16 +104,21 @@ export class ProposalItemsService {
     /**
      * Adds a single item to a DRAFT proposal and recomputes proposal totals.
      * Returns the new item id (caller refetches the full proposal projection).
+     *
+     * Audit: writes a ConfigAuditLog entry with operation=CREATE, the new
+     * item snapshot in `after`, and the recomputed proposal totals so a
+     * pricing-change reviewer has full context in a single audit row.
      */
     async addItem(
-        companyId: string,
+        actor: ActorContext,
         proposalId: string,
         dto: CreateProposalItemDto,
     ): Promise<{ id: string }> {
+        const { companyId } = actor;
         let createdId = '';
 
         await this.prisma.$transaction(async (tx) => {
-            await this.assertDraftLocked(tx, companyId, proposalId);
+            const proposalNumber = await this.assertDraftLocked(tx, companyId, proposalId);
 
             const subtotal = computeItemSubtotal({
                 quantity: dto.quantity,
@@ -113,6 +150,23 @@ export class ProposalItemsService {
 
             await this.recomputeProposalTotals(tx, companyId, proposalId);
             createdId = created.id;
+
+            const afterItem = await this.loadItemSnapshot(tx, companyId, proposalId, created.id);
+            const afterTotals = await this.loadProposalTotals(tx, companyId, proposalId);
+
+            await this.auditService.write(tx, {
+                companyId,
+                actorId: actor.userId,
+                operation: AuditOperation.CREATE,
+                entityType: 'ProposalItem',
+                entityId: created.id,
+                entityCode: proposalNumber !== null ? `${proposalNumber}` : undefined,
+                after: {
+                    proposalId,
+                    item: afterItem,
+                    proposalTotals: afterTotals,
+                },
+            });
         });
 
         return { id: createdId };
@@ -121,19 +175,25 @@ export class ProposalItemsService {
     /**
      * Updates a single item on a DRAFT proposal and recomputes proposal totals.
      * Empty bodies are rejected to avoid silent no-ops.
+     *
+     * Audit: full before/after snapshots of the item AND the proposal totals
+     * are written so a reviewer can reconstruct the pricing impact of every
+     * edit without joining additional rows.
      */
     async updateItem(
-        companyId: string,
+        actor: ActorContext,
         proposalId: string,
         itemId: string,
         dto: UpdateProposalItemDto,
     ): Promise<void> {
+        const { companyId } = actor;
+
         if (Object.keys(dto).length === 0) {
             throw new UnprocessableEntityException('No fields provided to update.');
         }
 
         await this.prisma.$transaction(async (tx) => {
-            await this.assertDraftLocked(tx, companyId, proposalId);
+            const proposalNumber = await this.assertDraftLocked(tx, companyId, proposalId);
 
             // Lock the item row with a tenant- and parent-scoped read so we
             // cannot accidentally update an item belonging to a different
@@ -163,6 +223,12 @@ export class ProposalItemsService {
 
             const existing = rows[0];
             if (!existing) throw new NotFoundException('Proposal item not found.');
+
+            // Capture the full before-snapshot (including description/unit/
+            // sortOrder) and proposal totals BEFORE the update so the audit
+            // payload reflects the actual state.
+            const beforeItem = await this.loadItemSnapshot(tx, companyId, proposalId, itemId);
+            const beforeTotals = await this.loadProposalTotals(tx, companyId, proposalId);
 
             const nextQuantity = dto.quantity ?? Number(existing.quantity);
             const nextUnitPrice = dto.unitPrice ?? Number(existing.unitPrice);
@@ -202,19 +268,47 @@ export class ProposalItemsService {
             });
 
             await this.recomputeProposalTotals(tx, companyId, proposalId);
+
+            const afterItem = await this.loadItemSnapshot(tx, companyId, proposalId, itemId);
+            const afterTotals = await this.loadProposalTotals(tx, companyId, proposalId);
+
+            await this.auditService.write(tx, {
+                companyId,
+                actorId: actor.userId,
+                operation: AuditOperation.UPDATE,
+                entityType: 'ProposalItem',
+                entityId: itemId,
+                entityCode: proposalNumber !== null ? `${proposalNumber}` : undefined,
+                before: {
+                    proposalId,
+                    item: beforeItem,
+                    proposalTotals: beforeTotals,
+                },
+                after: {
+                    proposalId,
+                    item: afterItem,
+                    proposalTotals: afterTotals,
+                },
+            });
         });
     }
 
     /**
      * Removes a single item from a DRAFT proposal and recomputes totals.
+     *
+     * Audit: writes a DELETE entry with the full before-snapshot of the
+     * removed item and the totals before/after the recompute so the
+     * pricing impact is preserved even though the item row is gone.
      */
     async removeItem(
-        companyId: string,
+        actor: ActorContext,
         proposalId: string,
         itemId: string,
     ): Promise<void> {
+        const { companyId } = actor;
+
         await this.prisma.$transaction(async (tx) => {
-            await this.assertDraftLocked(tx, companyId, proposalId);
+            const proposalNumber = await this.assertDraftLocked(tx, companyId, proposalId);
 
             const rows = await tx.$queryRaw<Array<{ id: string }>>`
                 SELECT id
@@ -227,8 +321,34 @@ export class ProposalItemsService {
             const existing = rows[0];
             if (!existing) throw new NotFoundException('Proposal item not found.');
 
+            // Snapshot the item and totals BEFORE deletion — once deleted
+            // we have no way to reconstruct the row.
+            const beforeItem = await this.loadItemSnapshot(tx, companyId, proposalId, itemId);
+            const beforeTotals = await this.loadProposalTotals(tx, companyId, proposalId);
+
             await tx.proposalItem.delete({ where: { id: itemId } });
             await this.recomputeProposalTotals(tx, companyId, proposalId);
+
+            const afterTotals = await this.loadProposalTotals(tx, companyId, proposalId);
+
+            await this.auditService.write(tx, {
+                companyId,
+                actorId: actor.userId,
+                operation: AuditOperation.DELETE,
+                entityType: 'ProposalItem',
+                entityId: itemId,
+                entityCode: proposalNumber !== null ? `${proposalNumber}` : undefined,
+                before: {
+                    proposalId,
+                    item: beforeItem,
+                    proposalTotals: beforeTotals,
+                },
+                after: {
+                    proposalId,
+                    item: null,
+                    proposalTotals: afterTotals,
+                },
+            });
         });
     }
 
@@ -341,15 +461,18 @@ export class ProposalItemsService {
 
     /**
      * Locks the parent Proposal row and asserts it is in DRAFT status.
-     * Returns nothing on success; throws on missing or non-DRAFT.
+     * Returns the proposal `number` on success (used as audit entityCode);
+     * throws on missing or non-DRAFT.
      */
     private async assertDraftLocked(
         tx: Prisma.TransactionClient,
         companyId: string,
         proposalId: string,
-    ): Promise<void> {
-        const rows = await tx.$queryRaw<Array<{ id: string; status: ProposalStatus }>>`
-            SELECT id, status
+    ): Promise<number | null> {
+        const rows = await tx.$queryRaw<
+            Array<{ id: string; status: ProposalStatus; number: number }>
+        >`
+            SELECT id, status, number
             FROM "Proposal"
             WHERE id = ${proposalId} AND "companyId" = ${companyId}
             FOR UPDATE
@@ -362,6 +485,56 @@ export class ProposalItemsService {
                 `Proposal items can only be modified while the proposal is in DRAFT (current status: ${proposal.status}).`,
             );
         }
+        return proposal.number;
+    }
+
+    // ── Internal: snapshot helpers for audit payloads ────────────────────────
+
+    /**
+     * Reads a single item row and returns a JSON-serialisable snapshot.
+     * Decimal columns are converted to strings to keep the audit payload
+     * stable across drivers.
+     */
+    private async loadItemSnapshot(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        proposalId: string,
+        itemId: string,
+    ): Promise<ItemSnapshot | null> {
+        const rows = await tx.$queryRaw<Array<ItemSnapshot>>`
+            SELECT id,
+                   description,
+                   unit,
+                   "quantity"::text     AS "quantity",
+                   "unitPrice"::text    AS "unitPrice",
+                   "discountPct"::text  AS "discountPct",
+                   "internalCost"::text AS "internalCost",
+                   "subtotal"::text     AS "subtotal",
+                   "sortOrder"          AS "sortOrder"
+            FROM "ProposalItem"
+            WHERE id = ${itemId}
+              AND "companyId" = ${companyId}
+              AND "proposalId" = ${proposalId}
+        `;
+        return rows[0] ?? null;
+    }
+
+    /**
+     * Reads the proposal's stored totals (post-recompute) for audit context.
+     */
+    private async loadProposalTotals(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        proposalId: string,
+    ): Promise<ProposalTotalsSnapshot | null> {
+        const rows = await tx.$queryRaw<Array<ProposalTotalsSnapshot>>`
+            SELECT "subtotal"::text   AS "subtotal",
+                   "totalPrice"::text AS "totalPrice",
+                   "totalCost"::text  AS "totalCost"
+            FROM "Proposal"
+            WHERE id = ${proposalId} AND "companyId" = ${companyId}
+        `;
+        return rows[0] ?? null;
     }
 }
 

@@ -5,7 +5,11 @@ import { CompanyConfigModule } from './company-config/company-config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
-import { TasksModule } from './tasks/tasks.module';
+
+// NOTE: TasksModule is referenced in the schema (Task / TaskComment models)
+// and in permission.defaults.ts but its NestJS module has not been
+// implemented yet. The import was previously here and broke `nest build`.
+// Re-add this import the moment apps/api/src/tasks/tasks.module.ts lands.
 
 @Module({
     imports: [
@@ -14,7 +18,6 @@ import { TasksModule } from './tasks/tasks.module';
         CompanyConfigModule,
         ServiceRequestsModule,
         ClientsModule,
-        TasksModule,
         ProposalsModule,
     ],
 })

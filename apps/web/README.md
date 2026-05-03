@@ -19,7 +19,8 @@ they enforce server-side.
 
 | Surface           | Routes                                  | Backend it speaks to                          |
 | ----------------- | --------------------------------------- | --------------------------------------------- |
-| Sign-in (paste)   | `/sign-in`                              | none — see "Auth" below                       |
+| Sign-in           | `/sign-in`                              | `POST /auth/login`                            |
+| Bootstrap         | (every authenticated route)             | `GET /memberships/me`                         |
 | Service Requests  | `/requests`, `/requests/:id`            | `GET /companies/:cid/requests[/:id]`          |
 | Clients           | `/clients`, `/clients/:id`              | `GET /companies/:cid/clients[/:id]` + (de/re)activate |
 | Proposals         | `/proposals`, `/proposals/:id`          | `GET /companies/:cid/proposals[/:id]` + send/approve/reject/cancel |
@@ -28,20 +29,47 @@ they enforce server-side.
 Out of scope for this shell: public landing page, chat, payments, automation
 builder, full client portal, mobile, visual polish.
 
-## Auth (today)
+## Auth
 
-There is no `/auth/login` endpoint in the backend yet — the `JwtAuthGuard`
-exists but no `JwtStrategy` / `AuthController` is registered. Until that
-ships, the operator pastes a JWT they obtained out-of-band plus the
-`companyId` they want to enter as. The token is stored in `localStorage`
-under `orkestree.session.v1` and sent as `Authorization: Bearer …` on every
-request. **Server-side guards re-validate the token and the membership on
-every call**, so a forged or stale token simply fails 401 / 403 — the UI's
-gate is just a UX nicety.
+Sign-in is a real email + password form wired to `POST /auth/login`. On
+success the backend returns a signed JWT; the frontend stores it in
+`localStorage` (`orkestree.session.v1`) and sends it as `Authorization:
+Bearer …` on every API call. Server-side guards (`JwtAuthGuard`,
+`CompanyMemberGuard`, `ResourcePermissionGuard`) re-validate the token,
+the user's `isActive`, and the membership's `status === ACTIVE` on every
+request, so the client-side gate is a UX gate, not an authorization one.
 
-When the auth module lands, only `src/app/sign-in/page.tsx` and
-`src/lib/session.tsx` need to change. The rest of the app keeps working
-unchanged.
+Right after sign-in (and on every full page reload) the app calls
+`GET /memberships/me` to load:
+
+- the current user identity
+- the list of ACTIVE memberships in ACTIVE companies
+- the role per membership
+
+The session provider picks one membership as active (the last one used,
+falling back to the first the backend returned). When the user has more
+than one membership, a workspace switcher is rendered in the header. The
+backend keeps a single canonical token per session — switching workspaces
+does NOT issue a new JWT; it only changes which `companyId` the frontend
+sends in the URL of subsequent calls. `CompanyMemberGuard` re-checks
+membership on every call, so a switch the backend disagrees with simply
+403s.
+
+### Why localStorage and not httpOnly cookies?
+
+This is a deliberate, scoped trade-off:
+
+- The API is configured for `Authorization: Bearer …` with
+  `credentials: 'omit'` everywhere; switching to cookies needs CORS
+  `allowCredentials` + a CSRF surface that is intentionally out of scope
+  for this phase.
+- The operator console runs on a different origin from the API in dev,
+  which makes cookie scoping awkward without a same-site reverse proxy.
+- The product is internal-operator today, not end-customer; localStorage
+  is acceptable here in a way it would not be for a public client portal.
+
+Plan: migrate to httpOnly cookies the same week the auth module ships
+SSO/refresh tokens.
 
 ## Layout
 
@@ -50,21 +78,28 @@ src/
   app/
     layout.tsx           — root <html>; mounts <Providers>
     providers.tsx        — SessionProvider + ToastProvider
-    page.tsx             — redirector (→ /sign-in or /requests)
-    sign-in/             — paste-a-JWT form
+    page.tsx             — redirector (→ /sign-in, /requests, or /proposals
+                           depending on the active membership's role)
+    sign-in/             — email + password form → POST /auth/login
     (app)/               — route group: every authenticated screen
       layout.tsx         — wraps children in <AppShell>
       requests/          — list + detail
       clients/           — list + detail
       proposals/         — list + detail
   components/
-    shell/               — AppShell, Sidebar, Header, PageContainer
+    shell/               — AppShell (auth gate, four-phase),
+                           Sidebar (role-aware nav),
+                           Header (workspace switcher + identity),
+                           PageContainer
     ui/                  — Button, Input, Card, Badge, Table, Modal, Toast, States
     feature/             — proposal-specific composites (status badge, actions, PDF button)
   lib/
     http.ts              — fetch wrapper, ApiError, session storage helpers
     api.ts               — typed wrappers for every backend endpoint we use
-    session.tsx          — SessionProvider + useSession / useRequiredSession
+                           (authApi.login, membershipsApi.me, plus domain APIs)
+    session.tsx          — SessionProvider + useSession / useRequiredSession,
+                           four phases: loading | unauthenticated |
+                           no-workspaces | authenticated
     use-resource.ts      — minimal data-fetching hook
     format.ts            — currency / date / name helpers
   types/
@@ -92,20 +127,19 @@ pnpm --filter @orkestree/web lint
 pnpm --filter @orkestree/web build
 ```
 
-## Backend API gaps surfaced while building this
+## Backend API gaps still open
 
-These were intentionally **not** worked around with invented endpoints:
+Auth is now wired end-to-end, but a few related gaps remain. They are
+intentionally **not** worked around with invented endpoints:
 
-1. **No `POST /auth/login`.** No `AuthController` / `JwtStrategy` exists in
-   `apps/api/src/auth/*`. Sign-in is therefore a paste-a-JWT form. Blocks any
-   real user onboarding.
-2. **No `GET /memberships/me` / "whoami".** The frontend cannot discover
-   which workspaces a user belongs to, what role they hold, or their
-   permission set. Today we ask the operator to type the `companyId` and
-   pick a role hint manually. A whoami endpoint would let us:
-   - drive a workspace switcher in the header
-   - hide nav items the user definitely cannot reach
-   - skip showing actions the backend will reject
+1. **No password-set / invite-acceptance flow.** `POST /auth/login`
+   verifies a stored hash, but there is no endpoint to set the initial
+   password for a newly invited user. Today, accounts must be seeded
+   directly in the database (the `AuthService.hashPassword(plain)` helper
+   produces hashes in the format the verifier expects).
+2. **No refresh-token endpoint.** The access token's lifetime is
+   `JWT_EXPIRES_IN` (default 7 days). When it expires, the user is silently
+   bounced to `/sign-in`. A refresh flow is part of the next auth phase.
 3. **No catalogue endpoints surfaced for service-request stages or service
    types** in the operator UI. The backend supports the corresponding
    filters (`stageId`, `serviceTypeId`, `assignedMembershipId`) but we
@@ -118,17 +152,18 @@ These were intentionally **not** worked around with invented endpoints:
 
 ## Recommended next frontend steps
 
-1. **Auth integration.** Once `POST /auth/login` and `GET /memberships/me`
-   ship, replace the paste-a-JWT page and add a workspace switcher.
-2. **Reference data loaders.** Hooks for stages, service types, and
+1. **Reference data loaders.** Hooks for stages, service types, and
    memberships (cached per workspace) — unlocks rich list filters and the
    stage / assignee pickers on the request detail page.
-3. **Proposal editing.** Items CRUD, totals re-compute UI, validity-date
+2. **Proposal editing.** Items CRUD, totals re-compute UI, validity-date
    picker, notes editing — gated to DRAFT, mirroring backend invariants.
-4. **Custom fields.** Render the workspace's `CustomField` schema on the
+3. **Custom fields.** Render the workspace's `CustomField` schema on the
    request / client / proposal detail pages and wire the field-value
    endpoints.
-5. **Tasks module** when it lands in the API.
-6. **Pagination.** Replace the hard-coded `limit=100` with cursor / offset
+4. **Tasks module** when it lands in the API.
+5. **Pagination.** Replace the hard-coded `limit=100` with cursor / offset
    paginators on each list.
-7. **SWR or React Query** once two pages need to invalidate the same cache.
+6. **SWR or React Query** once two pages need to invalidate the same cache.
+7. **Refresh-token / cookie migration.** Once the auth module ships
+   refresh tokens, move from localStorage to httpOnly cookies and add the
+   CSRF surface that comes with `credentials: 'include'`.

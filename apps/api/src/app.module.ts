@@ -1,8 +1,10 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
+import { MembershipsModule } from './memberships/memberships.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProposalJobsModule } from './proposals/jobs/proposal-jobs.module';
 import { ProposalPdfModule } from './proposals/pdf/proposal-pdf.module';
@@ -36,7 +38,9 @@ function parseRedisUrl(url: string): { host: string; port: number; password?: st
             }),
         }),
         PrismaModule,
+        AuthModule,
         CompanyConfigModule,
+        MembershipsModule,
         ServiceRequestsModule,
         ClientsModule,
         ProposalsModule,

@@ -3,62 +3,84 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Select } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { Field, Input } from '@/components/ui/Input';
+import { ApiError } from '@/lib/http';
 import { useSession } from '@/lib/session';
-import { Role } from '@/types/domain';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sign-in (token-paste mode)
+// Sign-in
 //
-// IMPORTANT: There is no /auth/login endpoint in the backend yet. The
-// JwtAuthGuard exists but no JwtStrategy / AuthController is registered (see
-// apps/api/src/auth/* — only the guards / decorators ship today). Until that
-// lands, the operator pastes a JWT they obtained out-of-band and the company
-// id they want to enter as. The backend re-validates everything server-side
-// on every request, so a wrong / forged token simply fails 401 / 403.
+// Real email + password form wired to POST /auth/login. On success, the
+// SessionProvider bootstraps /memberships/me and the user lands on
+// /requests (or the no-workspaces panel inside the shell if their account
+// has no ACTIVE memberships).
 //
-// When a real auth module ships, this page evolves into an email + password
-// form that calls POST /auth/login and stores the returned token via the
-// same useSession().signIn(...) call. The rest of the app keeps working
-// without changes.
+// The form does not branch on "wrong email" vs "wrong password": the
+// backend returns a single opaque 401 to avoid user enumeration. We mirror
+// that on the client.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ROLES: Role[] = ['OWNER', 'ADMIN', 'FINANCEIRO', 'OPERACIONAL', 'CLIENTE'];
 
 export default function SignInPage() {
     const router = useRouter();
-    const { session, signIn, loading } = useSession();
+    const { snapshot, signIn } = useSession();
 
-    const [token, setToken] = useState('');
-    const [companyId, setCompanyId] = useState('');
-    const [role, setRole] = useState<Role | ''>('');
-    const [workspaceLabel, setWorkspaceLabel] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
 
+    // If the session bootstraps to authenticated (e.g. user already had a
+    // valid token in localStorage), bounce out of /sign-in.
     useEffect(() => {
-        if (!loading && session) {
+        if (snapshot.phase === 'authenticated') {
             router.replace('/requests');
         }
-    }, [loading, session, router]);
+    }, [snapshot.phase, router]);
 
-    function onSubmit(e: FormEvent) {
+    async function onSubmit(e: FormEvent) {
         e.preventDefault();
         setError(null);
-        const t = token.trim();
-        const c = companyId.trim();
-        if (!t || !c) {
-            setError('Both token and company ID are required.');
+        const e1 = email.trim();
+        const p1 = password;
+        if (!e1 || !p1) {
+            setError('Email and password are required.');
             return;
         }
-        signIn({
-            token: t,
-            companyId: c,
-            role: role === '' ? null : role,
-            workspaceLabel: workspaceLabel.trim() || null,
-        });
-        router.replace('/requests');
+        setBusy(true);
+        try {
+            await signIn(e1, p1);
+            // Navigation is handled by the effect above as soon as the
+            // snapshot flips to `authenticated`.
+        } catch (err) {
+            if (err instanceof ApiError) {
+                if (err.status === 401) {
+                    setError('Invalid email or password.');
+                } else if (err.status === 400) {
+                    setError(err.toUserMessage());
+                } else if (err.status === 0 || err.status >= 500) {
+                    setError(
+                        'The server is unavailable right now. Please try again in a moment.',
+                    );
+                } else {
+                    setError(err.toUserMessage());
+                }
+            } else {
+                setError('Sign-in failed. Please try again.');
+            }
+        } finally {
+            setBusy(false);
+        }
     }
+
+    const banner =
+        snapshot.phase === 'no-workspaces' ? (
+            <p className="rounded-md border border-amber-200 bg-state-warning-bg px-3 py-2 text-sm text-state-warning">
+                Your last sign-in succeeded but your account has no active workspaces.
+                Sign in again with a different account, or ask an administrator to
+                invite you.
+            </p>
+        ) : null;
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-surface-canvas px-4 py-10">
@@ -71,81 +93,56 @@ export default function SignInPage() {
                 </div>
                 <Card>
                     <Card.Header
-                        title="Enter workspace"
-                        description="Authentication module not yet shipped. Paste a JWT and the workspace ID to continue. The backend re-validates both on every request."
+                        title="Sign in"
+                        description="Operator console. Use the email and password your administrator gave you."
                     />
-                    <form onSubmit={onSubmit}>
+                    <form onSubmit={onSubmit} noValidate>
                         <Card.Body>
                             <div className="flex flex-col gap-4">
-                                <Field label="JWT token" htmlFor="token">
-                                    <textarea
-                                        id="token"
-                                        value={token}
-                                        onChange={(e) => setToken(e.target.value)}
-                                        rows={3}
-                                        className="w-full rounded-md border border-border bg-surface-base px-3 py-2 font-mono text-xs text-ink placeholder:text-ink-faint focus-ring"
-                                        placeholder="eyJhbGciOi…"
-                                        autoComplete="off"
-                                        spellCheck={false}
-                                    />
-                                </Field>
-                                <Field label="Company ID" htmlFor="companyId">
+                                {banner}
+                                <Field label="Email" htmlFor="email">
                                     <Input
-                                        id="companyId"
-                                        value={companyId}
-                                        onChange={(e) => setCompanyId(e.target.value)}
-                                        placeholder="cmp_…"
-                                        autoComplete="off"
+                                        id="email"
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        autoComplete="email"
                                         spellCheck={false}
+                                        required
+                                        disabled={busy}
                                     />
                                 </Field>
-                                <Field
-                                    label="Workspace label (optional)"
-                                    htmlFor="workspace"
-                                    helper="Cosmetic only — shown in the header and sidebar."
-                                >
+                                <Field label="Password" htmlFor="password">
                                     <Input
-                                        id="workspace"
-                                        value={workspaceLabel}
-                                        onChange={(e) => setWorkspaceLabel(e.target.value)}
-                                        placeholder="Acme Co."
+                                        id="password"
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        autoComplete="current-password"
+                                        required
+                                        disabled={busy}
                                     />
-                                </Field>
-                                <Field
-                                    label="Role hint (optional)"
-                                    htmlFor="role"
-                                    helper="UI-only hint. Server enforces real permissions."
-                                >
-                                    <Select
-                                        id="role"
-                                        value={role}
-                                        onChange={(e) => setRole(e.target.value as Role | '')}
-                                    >
-                                        <option value="">Unknown</option>
-                                        {ROLES.map((r) => (
-                                            <option key={r} value={r}>
-                                                {r}
-                                            </option>
-                                        ))}
-                                    </Select>
                                 </Field>
                                 {error ? (
-                                    <p className="rounded-md border border-red-200 bg-state-danger-bg px-3 py-2 text-sm text-state-danger">
+                                    <p
+                                        role="alert"
+                                        className="rounded-md border border-red-200 bg-state-danger-bg px-3 py-2 text-sm text-state-danger"
+                                    >
                                         {error}
                                     </p>
                                 ) : null}
                             </div>
                         </Card.Body>
                         <Card.Footer>
-                            <Button type="submit" variant="primary">
-                                Continue
+                            <Button type="submit" variant="primary" loading={busy}>
+                                Sign in
                             </Button>
                         </Card.Footer>
                     </form>
                 </Card>
                 <p className="mt-4 text-center text-xs text-ink-subtle">
-                    The token is stored in this browser only (localStorage) and is sent on every API
-                    request as <code className="font-mono">Authorization: Bearer …</code>.
+                    Forgot your password? Contact your workspace administrator —
+                    self-serve recovery is not yet available.
                 </p>
             </div>
         </div>

@@ -24,25 +24,63 @@ export type ProposalStatus =
 
 export type ClientType = 'INDIVIDUAL' | 'BUSINESS';
 
-// ── Membership / actor ──────────────────────────────────────────────────────
+// ── Auth / session ──────────────────────────────────────────────────────────
+
+export type MembershipStatus = 'ACTIVE' | 'INACTIVE' | 'INVITED';
 
 /**
- * Local view of the authenticated session. The backend does NOT yet expose a
- * `whoami`/`/auth/me` endpoint (no AuthController exists); we therefore store
- * the operator-supplied JWT plus the companyId they're entering as. Once a
- * proper auth module lands, this type evolves but the rest of the app keeps
- * using `useSession()` unchanged.
+ * Identity returned by POST /auth/login and GET /auth/me.
+ */
+export interface AuthUser {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatarUrl: string | null;
+}
+
+/**
+ * Workspace + membership shape returned by GET /memberships/me. The list
+ * is already filtered server-side to ACTIVE memberships of ACTIVE companies,
+ * so the frontend doesn't have to re-filter for "switchable" workspaces.
+ */
+export interface MembershipSummary {
+    id: string;
+    role: Role;
+    status: MembershipStatus;
+    createdAt: string;
+    company: {
+        id: string;
+        legalName: string;
+        tradeName: string | null;
+        taxId: string;
+    };
+}
+
+export interface MembershipsMeResponse {
+    user: AuthUser;
+    memberships: MembershipSummary[];
+}
+
+export interface LoginResponse {
+    accessToken: string;
+    expiresIn: string;
+    user: AuthUser;
+}
+
+/**
+ * Frontend session shape. The token comes from POST /auth/login;
+ * `companyId` is the active workspace (one of the user's memberships).
+ * Identity + memberships are loaded by the SessionProvider on mount and
+ * after every workspace switch.
+ *
+ * `role` mirrors the active membership's role — UX hint only. The backend
+ * re-validates every permission via ResourcePermissionGuard on every call.
  */
 export interface Session {
     token: string;
     companyId: string;
-    /**
-     * Best-effort role hint (read from the JWT or set manually). Drives only
-     * UI affordances — the backend re-checks every permission server-side.
-     * `null` means "unknown; show conservative defaults".
-     */
     role: Role | null;
-    /** Display label for the workspace. Pure UI sugar. */
     workspaceLabel: string | null;
 }
 

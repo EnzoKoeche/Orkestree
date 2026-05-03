@@ -15,12 +15,15 @@
 
 import {
     ApproveProposalDto,
+    AuthUser,
     CancelProposalDto,
     ClientDetail,
     ClientListItem,
     ListClientsQuery,
     ListProposalsQuery,
     ListServiceRequestsQuery,
+    LoginResponse,
+    MembershipsMeResponse,
     ProposalDetail,
     ProposalListItem,
     RejectProposalDto,
@@ -29,6 +32,44 @@ import {
     ServiceRequestListItem,
 } from '@/types/domain';
 import { buildApiUrl, request } from './http';
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+//
+// /auth/login is the only endpoint that does NOT require a Bearer token —
+// it issues one. /auth/me + /memberships/me are the bootstrap pair every
+// authenticated screen waits for after sign-in or page reload.
+
+export const authApi = {
+    login(body: { email: string; password: string }, signal?: AbortSignal) {
+        return request<LoginResponse>('/auth/login', {
+            method: 'POST',
+            body,
+            skipAuth: true,
+            signal,
+        });
+    },
+
+    me(signal?: AbortSignal, tokenOverride?: string) {
+        return request<AuthUser & { isActive: boolean; activeMembershipCount: number } | null>(
+            '/auth/me',
+            { signal, tokenOverride },
+        );
+    },
+};
+
+export const membershipsApi = {
+    /**
+     * Bootstrap: returns the authenticated user + their ACTIVE memberships
+     * across ACTIVE companies. The list is server-filtered, so the UI does
+     * not need to drop INVITED / INACTIVE rows.
+     */
+    me(signal?: AbortSignal, tokenOverride?: string) {
+        return request<MembershipsMeResponse | null>('/memberships/me', {
+            signal,
+            tokenOverride,
+        });
+    },
+};
 
 // ── Service Requests ───────────────────────────────────────────────────────
 

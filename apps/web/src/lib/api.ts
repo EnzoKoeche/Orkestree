@@ -20,6 +20,7 @@ import {
     ClientDetail,
     ClientListItem,
     CreateProposalItemPayload,
+    CreateProposalPayload,
     ListClientsQuery,
     ListProposalsQuery,
     ListServiceRequestsQuery,
@@ -31,8 +32,10 @@ import {
     SendProposalDto,
     ServiceRequestDetail,
     ServiceRequestListItem,
+    ServiceTypeOption,
     UpdateProposalItemPayload,
     UpdateProposalPayload,
+    WorkflowSummary,
 } from '@/types/domain';
 import { buildApiUrl, request } from './http';
 
@@ -143,6 +146,22 @@ export const proposalsApi = {
             query: query as Record<string, string | number | boolean | undefined>,
             signal,
         });
+    },
+
+    /**
+     * POST /companies/:companyId/proposals
+     *
+     * Creates a DRAFT proposal anchored to an existing ServiceRequest. The
+     * backend derives `clientId` from that request and rejects requests that
+     * are cancelled or not visible to the actor (CLIENTE row-level
+     * isolation). Returns the full ProposalDetail projection so the caller
+     * can navigate straight into the editor without a follow-up GET.
+     */
+    create(companyId: string, body: CreateProposalPayload, signal?: AbortSignal) {
+        return request<ProposalDetail>(
+            `/companies/${companyId}/proposals`,
+            { method: 'POST', body, signal },
+        );
     },
 
     get(companyId: string, proposalId: string, signal?: AbortSignal) {
@@ -269,5 +288,56 @@ export const proposalsApi = {
     /** Full absolute URL — handy for `window.open()` when needed. */
     pdfUrl(companyId: string, proposalId: string): string {
         return buildApiUrl(this.pdfPath(companyId, proposalId));
+    },
+};
+
+// ── Reference data (read-only) ─────────────────────────────────────────────
+//
+// Thin read-only slice of the existing config admin endpoints. Used by list
+// pages to render human-readable filters/labels and by the proposal-creation
+// flow to reach the right shape without spawning new backend endpoints.
+//
+// Permission semantics:
+//   COMPANY_CONFIG.VIEW is required server-side. By default that's only
+//   OWNER and ADMIN per `permission.defaults.ts`. OPERACIONAL / FINANCEIRO /
+//   CLIENTE will receive 403 — callers must catch and degrade (e.g., hide
+//   the filter, show raw ids). Never branch on the session role to decide
+//   whether to call: the backend ResourcePermissionGuard is the only source
+//   of truth.
+//
+// We do not expose the create/update/delete admin actions here on purpose:
+// the operator console is not a configuration tool today, and keeping this
+// surface narrow prevents accidental privilege escalation in the UI.
+
+export const serviceTypesApi = {
+    /**
+     * GET /companies/:companyId/config/service-types
+     *
+     * Returns all service types for the workspace (active + inactive),
+     * sorted by sortOrder/name on the server. Callers wanting only active
+     * options should filter client-side: the backend does not currently
+     * accept an `isActive` query parameter on this route.
+     */
+    list(companyId: string, signal?: AbortSignal) {
+        return request<ServiceTypeOption[]>(
+            `/companies/${companyId}/config/service-types`,
+            { signal },
+        );
+    },
+};
+
+export const workflowsApi = {
+    /**
+     * GET /companies/:companyId/config/workflows
+     *
+     * Returns workflows with their stages eagerly included (Prisma
+     * `include: { stages }` ordered by sortOrder). The default workflow
+     * comes first.
+     */
+    list(companyId: string, signal?: AbortSignal) {
+        return request<WorkflowSummary[]>(
+            `/companies/${companyId}/config/workflows`,
+            { signal },
+        );
     },
 };

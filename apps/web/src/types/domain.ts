@@ -369,3 +369,96 @@ export interface CancelProposalDto {
     reason?: string;
     note?: string;
 }
+
+// ── Reference data (read-only catalogues) ───────────────────────────────────
+//
+// Surface a thin slice of the existing /companies/:companyId/config/* admin
+// endpoints so list pages and the proposal-creation flow can render
+// human-readable labels and offer scoped filters. We deliberately:
+//
+//   - Type only the fields the operator UI actually consumes today.
+//     `select`-projecting on the server is not in scope for this pass; the
+//     backend response carries more fields, but we silently ignore them.
+//   - Use `unknown`-safe optional fields where the server projection is
+//     `include` (workflows include stages eagerly via Prisma relations).
+//   - Never invoke admin mutations from these wrappers — read-only consumers
+//     keep this surface narrow and prevent the catalogue from accidentally
+//     becoming a configuration UI.
+//
+// All three endpoints require COMPANY_CONFIG.VIEW. ADMIN/OWNER have it by
+// default per permission.defaults.ts; OPERACIONAL/FINANCEIRO/CLIENTE do not.
+// Callers must therefore tolerate a 403 from these endpoints and degrade
+// gracefully (omit the filter / show plain ids), which matches the
+// "best-effort enrichment" spirit of this layer.
+
+/**
+ * Item shape returned by GET /companies/:companyId/config/service-types.
+ * Mirrors `LIST_SELECT` in `service-types.service.ts`.
+ */
+export interface ServiceTypeOption {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    workflowId: string | null;
+    sortOrder: number;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    workflow: {
+        id: string;
+        code: string;
+        name: string;
+        isActive: boolean;
+    } | null;
+}
+
+/**
+ * Stage row included by GET /companies/:companyId/config/workflows. The
+ * service uses `include: { stages: ... }`, so the stage rows carry their
+ * full Prisma column set; we list only the fields the UI consumes.
+ */
+export interface WorkflowStageSummary {
+    id: string;
+    workflowId: string;
+    code: string;
+    name: string;
+    description: string | null;
+    color: string | null;
+    sortOrder: number;
+    isInitial: boolean;
+    isFinal: boolean;
+    isActive: boolean;
+}
+
+/**
+ * Workflow row returned by GET /companies/:companyId/config/workflows. The
+ * service uses Prisma `include: { stages }`; the UI uses workflows mainly
+ * to flatten stages for filter dropdowns.
+ */
+export interface WorkflowSummary {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    isDefault: boolean;
+    isActive: boolean;
+    stages: WorkflowStageSummary[];
+}
+
+// ── Proposal create payload ─────────────────────────────────────────────────
+//
+// Mirrors apps/api/src/proposals/dto/create-proposal.dto.ts. `clientId` is
+// NOT part of the payload — the backend derives it from the linked
+// ServiceRequest at creation time. Pricing fields are likewise omitted:
+// totals are computed from items server-side.
+
+export interface CreateProposalPayload {
+    serviceRequestId: string;
+    title: string;
+    notes?: string;
+    clientNotes?: string;
+    /** ISO-8601 string. */
+    validUntil?: string;
+    items?: CreateProposalItemPayload[];
+}

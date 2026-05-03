@@ -8,8 +8,9 @@ import { Card } from '@/components/ui/Card';
 import { Field, Select } from '@/components/ui/Input';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { Table } from '@/components/ui/Table';
-import { serviceRequestsApi } from '@/lib/api';
+import { serviceRequestsApi, serviceTypesApi } from '@/lib/api';
 import { formatDate, fullName } from '@/lib/format';
+import { ApiError } from '@/lib/http';
 import { useRequiredSession } from '@/lib/session';
 import { useResource } from '@/lib/use-resource';
 
@@ -19,10 +20,16 @@ import { useResource } from '@/lib/use-resource';
 // Filters supported by the backend (apps/api/.../list-service-requests.dto.ts):
 //   stageId, serviceTypeId, assignedMembershipId, isCancelled, limit, skip
 //
-// We surface only `isCancelled` here — the others would need workspace-
-// specific reference data (stage / service-type catalogues) that the
-// backend doesn't yet expose to the operator UI. We'd rather ship the list
-// without them than fake a dropdown.
+// Surfaced here:
+//   - `isCancelled` — pure shape, no reference data required.
+//   - `serviceTypeId` — reads the company's service-type catalogue via
+//     GET /companies/:companyId/config/service-types. That endpoint requires
+//     COMPANY_CONFIG.VIEW which only OWNER/ADMIN have by default; on a 403
+//     we silently hide the filter rather than show a broken dropdown.
+//
+// `stageId` and `assignedMembershipId` remain off until the membership
+// directory and per-workflow stage picker land — both depend on UX choices
+// (which workflow's stages are surfaced first?) we don't want to invent.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type CancelledFilter = 'all' | 'open' | 'cancelled';
@@ -30,18 +37,41 @@ type CancelledFilter = 'all' | 'open' | 'cancelled';
 export default function ServiceRequestsListPage() {
     const session = useRequiredSession();
     const [cancelled, setCancelled] = useState<CancelledFilter>('open');
+    const [serviceTypeId, setServiceTypeId] = useState<string>('all');
+
+    // Reference catalogue. Loaded once per workspace; permission errors are
+    // swallowed at render time so the page still functions for roles that
+    // can list requests but not the configuration catalogue.
+    const serviceTypes = useResource(
+        ['service-types', session.companyId],
+        (signal) => serviceTypesApi.list(session.companyId, signal),
+    );
+
+    const activeServiceTypes = useMemo(
+        () => (serviceTypes.data ?? []).filter((t) => t.isActive),
+        [serviceTypes.data],
+    );
+
+    const showServiceTypeFilter =
+        // Only show the filter if we successfully loaded a non-empty
+        // catalogue. A 403 leaves error set; we treat that as "operator
+        // doesn't have the catalogue" and degrade silently.
+        !serviceTypes.loading &&
+        !(serviceTypes.error instanceof ApiError && serviceTypes.error.status === 403) &&
+        activeServiceTypes.length > 0;
 
     const query = useMemo(
         () => ({
             isCancelled:
                 cancelled === 'all' ? undefined : cancelled === 'cancelled',
+            serviceTypeId: serviceTypeId === 'all' ? undefined : serviceTypeId,
             limit: 100,
         }),
-        [cancelled],
+        [cancelled, serviceTypeId],
     );
 
     const { data, error, loading, refetch } = useResource(
-        ['requests', session.companyId, cancelled],
+        ['requests', session.companyId, cancelled, serviceTypeId],
         (signal) => serviceRequestsApi.list(session.companyId, query, signal),
     );
 
@@ -56,19 +86,37 @@ export default function ServiceRequestsListPage() {
                 <Card.Header
                     title="All requests"
                     actions={
-                        <Field label="Status" htmlFor="cancelledFilter">
-                            <Select
-                                id="cancelledFilter"
-                                value={cancelled}
-                                onChange={(e) =>
-                                    setCancelled(e.target.value as CancelledFilter)
-                                }
-                            >
-                                <option value="open">Open only</option>
-                                <option value="cancelled">Cancelled only</option>
-                                <option value="all">All</option>
-                            </Select>
-                        </Field>
+                        <div className="flex flex-wrap items-end gap-3">
+                            {showServiceTypeFilter ? (
+                                <Field label="Service type" htmlFor="serviceTypeFilter">
+                                    <Select
+                                        id="serviceTypeFilter"
+                                        value={serviceTypeId}
+                                        onChange={(e) => setServiceTypeId(e.target.value)}
+                                    >
+                                        <option value="all">All</option>
+                                        {activeServiceTypes.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </Field>
+                            ) : null}
+                            <Field label="Status" htmlFor="cancelledFilter">
+                                <Select
+                                    id="cancelledFilter"
+                                    value={cancelled}
+                                    onChange={(e) =>
+                                        setCancelled(e.target.value as CancelledFilter)
+                                    }
+                                >
+                                    <option value="open">Open only</option>
+                                    <option value="cancelled">Cancelled only</option>
+                                    <option value="all">All</option>
+                                </Select>
+                            </Field>
+                        </div>
                     }
                 />
                 <Card.Body padded={false}>

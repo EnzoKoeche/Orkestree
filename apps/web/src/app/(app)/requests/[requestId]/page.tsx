@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { CreateProposalButton } from '@/components/feature/CreateProposalButton';
+import { ServiceRequestProposals } from '@/components/feature/ServiceRequestProposals';
 import { PageContainer, PageHeader } from '@/components/shell/PageContainer';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -13,10 +15,17 @@ import { useResource } from '@/lib/use-resource';
 
 // Service Request detail page.
 //
-// Read-only for now: the backend supports update / cancel / transition /
-// assign, but the operator workflow forms (stage picker, assignee picker)
-// require config-aware reference data we haven't surfaced yet. Surfaces
-// the canonical detail projection plus stage history and assignment log.
+// Read-only for the request itself: the backend supports update / cancel /
+// transition / assign, but the operator workflow forms (stage picker,
+// assignee picker) require config-aware reference data not yet surfaced.
+//
+// What IS wired here:
+//   - "Create proposal" action in the header → opens a small modal that
+//     calls POST /companies/:companyId/proposals with this request as the
+//     anchor, then navigates to the new proposal's DRAFT editor.
+//   - Related proposals card → calls GET /proposals?serviceRequestId=… so
+//     operators can see existing offers tied to this request without
+//     bouncing back to the proposals list.
 
 export default function ServiceRequestDetailPage() {
     const session = useRequiredSession();
@@ -68,7 +77,7 @@ export default function ServiceRequestDetailPage() {
                     ) : null
                 }
                 actions={
-                    <>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                         {data.isCancelled ? (
                             <Badge tone="danger" dot>
                                 Cancelled
@@ -78,7 +87,16 @@ export default function ServiceRequestDetailPage() {
                                 {data.currentStage.name}
                             </Badge>
                         ) : null}
-                    </>
+                        {/* Cancelled requests cannot anchor a new proposal: the
+                            backend rejects that combination explicitly in
+                            ProposalsService.createProposal. */}
+                        {!data.isCancelled ? (
+                            <CreateProposalButton
+                                request={data}
+                                companyId={session.companyId}
+                            />
+                        ) : null}
+                    </div>
                 }
             />
 
@@ -129,6 +147,16 @@ export default function ServiceRequestDetailPage() {
                             )}
                         </Card.Body>
                     </Card>
+
+                    {/* Related proposals are scoped via the existing
+                        list endpoint's `serviceRequestId` filter — no new
+                        backend surface required. The list refetches on
+                        mount, so navigating back here after creating a
+                        proposal naturally shows the new row. */}
+                    <ServiceRequestProposals
+                        companyId={session.companyId}
+                        requestId={data.id}
+                    />
                 </div>
 
                 <div className="flex flex-col gap-5">

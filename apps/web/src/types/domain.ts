@@ -280,6 +280,78 @@ export interface ListProposalsQuery {
     skip?: number;
 }
 
+// ── Proposal mutation DTOs ──────────────────────────────────────────────────
+//
+// Mirror apps/api/src/proposals/dto/*.ts exactly. Keeping these as
+// hand-written shapes (rather than generated) makes the wire contract
+// reviewable in one place and surfaces drift as a TS error.
+//
+// All money fields are typed as `number` because that's what
+// class-validator's @IsNumber expects on the wire. The backend converts
+// them to Prisma.Decimal in-service, so JS-float quirks at intermediate
+// values are still caught (validation rejects > maxDecimalPlaces).
+
+/**
+ * PATCH /companies/:companyId/proposals/:proposalId
+ *
+ * Backend invariants surfaced here:
+ *   - Only DRAFT proposals are editable; the API returns 422 otherwise.
+ *   - `discountPct` and `discountAmount` are mutually exclusive. To switch
+ *     from one to the other, the request must explicitly set the other to
+ *     null in the same call (see ProposalsService.updateProposal).
+ *   - `null` clears a nullable field; `undefined` (key omitted) leaves it
+ *     unchanged. We model "clear" as `| null` on every nullable field.
+ *   - Pricing totals (subtotal/totalPrice/totalCost) are NEVER part of the
+ *     payload — they are recomputed server-side.
+ */
+export interface UpdateProposalPayload {
+    title?: string;
+    notes?: string | null;
+    clientNotes?: string | null;
+    discountPct?: number | null;
+    discountAmount?: number | null;
+    /** ISO-8601 string. `null` clears the field. */
+    validUntil?: string | null;
+}
+
+/**
+ * POST /companies/:companyId/proposals/:proposalId/items
+ *
+ * `subtotal` is intentionally not part of the payload — it is computed by
+ * the backend as quantity × unitPrice × (1 − discountPct/100).
+ *
+ * `internalCost` is accepted at write time only when the caller has
+ * PROPOSAL.EDIT permission and the field-write authorization in
+ * ProposalItemsService approves it. The UI surfaces the field only to
+ * roles whose detail-projection includes it (Mechanism A).
+ */
+export interface CreateProposalItemPayload {
+    description: string;
+    unit?: string;
+    quantity: number;
+    unitPrice: number;
+    discountPct?: number | null;
+    internalCost?: number | null;
+    sortOrder?: number;
+}
+
+/**
+ * PATCH /companies/:companyId/proposals/:proposalId/items/:itemId
+ *
+ * Backend rejects empty bodies with 422 to avoid silent no-ops. Setting
+ * a nullable field to `null` clears it; omitting the key leaves the
+ * stored value unchanged.
+ */
+export interface UpdateProposalItemPayload {
+    description?: string;
+    unit?: string | null;
+    quantity?: number;
+    unitPrice?: number;
+    discountPct?: number | null;
+    internalCost?: number | null;
+    sortOrder?: number;
+}
+
 export interface SendProposalDto {
     note?: string;
 }

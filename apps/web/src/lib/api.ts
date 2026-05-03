@@ -19,6 +19,7 @@ import {
     CancelProposalDto,
     ClientDetail,
     ClientListItem,
+    CreateProposalItemPayload,
     ListClientsQuery,
     ListProposalsQuery,
     ListServiceRequestsQuery,
@@ -30,6 +31,8 @@ import {
     SendProposalDto,
     ServiceRequestDetail,
     ServiceRequestListItem,
+    UpdateProposalItemPayload,
+    UpdateProposalPayload,
 } from '@/types/domain';
 import { buildApiUrl, request } from './http';
 
@@ -174,6 +177,84 @@ export const proposalsApi = {
         return request<ProposalDetail>(
             `/companies/${companyId}/proposals/${proposalId}/cancel`,
             { method: 'POST', body },
+        );
+    },
+
+    // ── Draft mutations ────────────────────────────────────────────────────
+    //
+    // All four endpoints below are DRAFT-only on the backend (enforced under
+    // SELECT FOR UPDATE inside the service transaction). The UI hides them
+    // when status !== 'DRAFT', but the backend remains the source of truth:
+    // a stale tab that calls them will get a 422 with a clear message.
+    //
+    // Each one returns the full ProposalDetail projection (the controller
+    // refetches via getProposal after the mutation), so callers should
+    // replace local state with the returned value — that's the canonical
+    // post-mutation totals + items + status snapshot.
+
+    /**
+     * PATCH /companies/:companyId/proposals/:proposalId
+     *
+     * Updates proposal-level mutable fields (title, notes, clientNotes,
+     * validUntil, discountPct/discountAmount). Pricing totals are
+     * recomputed server-side when discount fields change.
+     */
+    update(
+        companyId: string,
+        proposalId: string,
+        body: UpdateProposalPayload,
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${companyId}/proposals/${proposalId}`,
+            { method: 'PATCH', body },
+        );
+    },
+
+    /**
+     * POST /companies/:companyId/proposals/:proposalId/items
+     *
+     * Adds an item to a DRAFT proposal. The controller returns the full
+     * proposal after the items service has recomputed totals.
+     */
+    addItem(
+        companyId: string,
+        proposalId: string,
+        body: CreateProposalItemPayload,
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${companyId}/proposals/${proposalId}/items`,
+            { method: 'POST', body },
+        );
+    },
+
+    /**
+     * PATCH /companies/:companyId/proposals/:proposalId/items/:itemId
+     *
+     * Updates a single item. Backend rejects empty bodies with 422; the
+     * caller is responsible for sending only changed fields.
+     */
+    updateItem(
+        companyId: string,
+        proposalId: string,
+        itemId: string,
+        body: UpdateProposalItemPayload,
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${companyId}/proposals/${proposalId}/items/${itemId}`,
+            { method: 'PATCH', body },
+        );
+    },
+
+    /**
+     * DELETE /companies/:companyId/proposals/:proposalId/items/:itemId
+     *
+     * Removes an item from a DRAFT proposal. Returns the full proposal
+     * with totals recomputed.
+     */
+    removeItem(companyId: string, proposalId: string, itemId: string) {
+        return request<ProposalDetail>(
+            `/companies/${companyId}/proposals/${proposalId}/items/${itemId}`,
+            { method: 'DELETE' },
         );
     },
 

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { ProposalActions } from '@/components/feature/ProposalActions';
+import { ProposalDetailsForm } from '@/components/feature/ProposalDetailsForm';
+import { ProposalItemsEditor } from '@/components/feature/ProposalItemsEditor';
 import { ProposalPdfButton } from '@/components/feature/ProposalPdfButton';
 import {
     ProposalStatusBadge,
@@ -29,18 +31,25 @@ import { ProposalDetail } from '@/types/domain';
 // ─────────────────────────────────────────────────────────────────────────────
 // Proposal detail page.
 //
-// Composes:
-//   - PageHeader with status badge
-//   - ProposalActions (status-aware send / approve / reject / cancel)
-//   - ProposalPdfButton (gated on APPROVED + pdfGeneratedAt)
-//   - Items table (role-safe — internalCost shown when present)
-//   - Totals panel (subtotal, discount, total; totalCost only when present)
-//   - Status history timeline
+// Two display modes driven by `proposal.status`:
 //
-// `internalCost` and `totalCost` are surfaced ONLY if the backend included
-// them in the response. The backend strips them at the Prisma `select`
-// layer for non-OWNER/ADMIN roles, so the absence of the field is the
-// authoritative signal.
+//   DRAFT   → editing affordances visible
+//             - ProposalDetailsForm  (title / notes / clientNotes / validUntil
+//                                     / discount)
+//             - ProposalItemsEditor  (add / edit / delete items)
+//             - Transition actions limited to "Send to client" + "Cancel"
+//   else    → strictly read-only items table + sealed details summary; the
+//             editing components never mount, so a stale tab cannot even
+//             attempt the PATCH/POST/DELETE calls.
+//
+// Backend remains the source of truth for editability: every mutation
+// re-checks `status = DRAFT` under SELECT FOR UPDATE inside its tx, so a
+// race between an edit and a "send/approve/cancel" cannot produce a half-
+// applied state.
+//
+// All four DRAFT mutations return the full ProposalDetail with totals
+// recomputed by ProposalItemsService — we replace local state with that
+// response. Front-end calculation of totals is intentionally absent.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ProposalDetailPage() {
@@ -53,8 +62,10 @@ export default function ProposalDetailPage() {
         (signal) => proposalsApi.get(session.companyId, proposalId, signal),
     );
 
-    // Local optimistic state so a successful action shows the new status
-    // immediately. The list refetch on next mount picks up the canonical row.
+    // `overlay` holds the most recent server-confirmed snapshot returned
+    // by a mutation. This is the canonical post-mutation state — items
+    // and totals come from the backend, never from a client-side
+    // recomputation. Cleared when the page remounts (refetch).
     const [overlay, setOverlay] = useState<ProposalDetail | null>(null);
 
     if (loading) {
@@ -74,6 +85,10 @@ export default function ProposalDetailPage() {
     if (!data) return null;
 
     const proposal = overlay ?? data;
+    const isDraft = proposal.status === 'DRAFT';
+    // The privileged-only internalCost field is included by the backend's
+    // PRIVILEGED projection. Its presence on at least one item is the
+    // authoritative signal — the UI never tries to derive role from session.
     const showInternalCost = proposal.items.some((i) => i.internalCost !== undefined);
 
     return (
@@ -125,79 +140,47 @@ export default function ProposalDetailPage() {
 
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                 <div className="lg:col-span-2 flex flex-col gap-5">
+                    {isDraft ? (
+                        <Card>
+                            <Card.Header
+                                title="Proposal details"
+                                description="Editable while the proposal is in DRAFT. Once sent, these fields become read-only."
+                            />
+                            <Card.Body>
+                                <ProposalDetailsForm
+                                    proposal={proposal}
+                                    companyId={session.companyId}
+                                    onSaved={(next) => setOverlay(next)}
+                                />
+                            </Card.Body>
+                        </Card>
+                    ) : null}
+
                     <Card>
                         <Card.Header
                             title="Items"
                             description={
                                 proposal.items.length === 0
-                                    ? 'No items added yet.'
-                                    : `${proposal.items.length} item${proposal.items.length === 1 ? '' : 's'}`
+                                    ? isDraft
+                                        ? 'Add items to populate the totals.'
+                                        : 'No items on this proposal.'
+                                    : `${proposal.items.length} item${proposal.items.length === 1 ? '' : 's'}${isDraft ? ' · editable' : ''}`
                             }
                         />
                         <Card.Body padded={false}>
-                            {proposal.items.length === 0 ? (
-                                <p className="px-5 py-6 text-sm text-ink-subtle">
-                                    Items will appear here when added to this proposal.
-                                </p>
+                            {isDraft ? (
+                                <ProposalItemsEditor
+                                    proposal={proposal}
+                                    companyId={session.companyId}
+                                    onMutated={(next) => setOverlay(next)}
+                                    editable
+                                    showInternalCost={showInternalCost}
+                                />
                             ) : (
-                                <Table>
-                                    <Table.Head>
-                                        <tr>
-                                            <Table.Cell head>Description</Table.Cell>
-                                            <Table.Cell head>Unit</Table.Cell>
-                                            <Table.Cell head align="right">Qty</Table.Cell>
-                                            <Table.Cell head align="right">Unit price</Table.Cell>
-                                            <Table.Cell head align="right">Discount</Table.Cell>
-                                            {showInternalCost ? (
-                                                <Table.Cell head align="right">Internal cost</Table.Cell>
-                                            ) : null}
-                                            <Table.Cell head align="right">Subtotal</Table.Cell>
-                                        </tr>
-                                    </Table.Head>
-                                    <Table.Body>
-                                        {proposal.items.map((item) => (
-                                            <Table.Row key={item.id}>
-                                                <Table.Cell>
-                                                    <span className="block max-w-md truncate font-medium text-ink">
-                                                        {item.description}
-                                                    </span>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <span className="text-sm text-ink-subtle">
-                                                        {item.unit ?? '—'}
-                                                    </span>
-                                                </Table.Cell>
-                                                <Table.Cell align="right">
-                                                    <span className="tabular-nums text-sm text-ink">
-                                                        {formatNumber(item.quantity, 2)}
-                                                    </span>
-                                                </Table.Cell>
-                                                <Table.Cell align="right">
-                                                    <span className="tabular-nums text-sm text-ink">
-                                                        {formatCurrency(item.unitPrice)}
-                                                    </span>
-                                                </Table.Cell>
-                                                <Table.Cell align="right">
-                                                    <span className="tabular-nums text-sm text-ink-subtle">
-                                                        {formatPercent(item.discountPct)}
-                                                    </span>
-                                                </Table.Cell>
-                                                {showInternalCost ? (
-                                                    <Table.Cell align="right">
-                                                        <span className="tabular-nums text-sm text-ink-subtle">
-                                                            {formatCurrency(item.internalCost ?? null)}
-                                                        </span>
-                                                    </Table.Cell>
-                                                ) : null}
-                                                <Table.Cell align="right">
-                                                    <span className="tabular-nums font-medium text-ink">
-                                                        {formatCurrency(item.subtotal)}
-                                                    </span>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        ))}
-                                    </Table.Body>
-                                </Table>
+                                <ReadOnlyItemsTable
+                                    items={proposal.items}
+                                    showInternalCost={showInternalCost}
+                                />
                             )}
                         </Card.Body>
                     </Card>
@@ -242,7 +225,10 @@ export default function ProposalDetailPage() {
                         </Card.Body>
                     </Card>
 
-                    {proposal.notes || proposal.clientNotes ? (
+                    {/* Sealed-state notes summary. While DRAFT, the editor
+                        above is the only authoritative view of these
+                        fields; rendering them again would be confusing. */}
+                    {!isDraft && (proposal.notes || proposal.clientNotes) ? (
                         <Card>
                             <Card.Header title="Notes" />
                             <Card.Body>
@@ -275,7 +261,14 @@ export default function ProposalDetailPage() {
 
                 <div className="flex flex-col gap-5">
                     <Card>
-                        <Card.Header title="Totals" />
+                        <Card.Header
+                            title="Totals"
+                            description={
+                                isDraft
+                                    ? 'Recalculated by the backend on every change.'
+                                    : undefined
+                            }
+                        />
                         <Card.Body>
                             <dl className="space-y-2 text-sm">
                                 <Row label="Subtotal" value={formatCurrency(proposal.subtotal)} />
@@ -397,6 +390,87 @@ export default function ProposalDetailPage() {
                 </div>
             </div>
         </PageContainer>
+    );
+}
+
+// ── Read-only items table (non-DRAFT proposals) ──────────────────────────────
+//
+// Mirrors the columns ProposalItemsEditor renders so the UI stays visually
+// consistent across status transitions; it just omits the actions column
+// and never mounts the editor's modals.
+function ReadOnlyItemsTable({
+    items,
+    showInternalCost,
+}: {
+    items: ProposalDetail['items'];
+    showInternalCost: boolean;
+}) {
+    if (items.length === 0) {
+        return (
+            <p className="px-5 py-6 text-sm text-ink-subtle">
+                No items on this proposal.
+            </p>
+        );
+    }
+    return (
+        <Table>
+            <Table.Head>
+                <tr>
+                    <Table.Cell head>Description</Table.Cell>
+                    <Table.Cell head>Unit</Table.Cell>
+                    <Table.Cell head align="right">Qty</Table.Cell>
+                    <Table.Cell head align="right">Unit price</Table.Cell>
+                    <Table.Cell head align="right">Discount</Table.Cell>
+                    {showInternalCost ? (
+                        <Table.Cell head align="right">Internal cost</Table.Cell>
+                    ) : null}
+                    <Table.Cell head align="right">Subtotal</Table.Cell>
+                </tr>
+            </Table.Head>
+            <Table.Body>
+                {items.map((item) => (
+                    <Table.Row key={item.id}>
+                        <Table.Cell>
+                            <span className="block max-w-md truncate font-medium text-ink">
+                                {item.description}
+                            </span>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <span className="text-sm text-ink-subtle">
+                                {item.unit ?? '—'}
+                            </span>
+                        </Table.Cell>
+                        <Table.Cell align="right">
+                            <span className="tabular-nums text-sm text-ink">
+                                {formatNumber(item.quantity, 2)}
+                            </span>
+                        </Table.Cell>
+                        <Table.Cell align="right">
+                            <span className="tabular-nums text-sm text-ink">
+                                {formatCurrency(item.unitPrice)}
+                            </span>
+                        </Table.Cell>
+                        <Table.Cell align="right">
+                            <span className="tabular-nums text-sm text-ink-subtle">
+                                {formatPercent(item.discountPct)}
+                            </span>
+                        </Table.Cell>
+                        {showInternalCost ? (
+                            <Table.Cell align="right">
+                                <span className="tabular-nums text-sm text-ink-subtle">
+                                    {formatCurrency(item.internalCost ?? null)}
+                                </span>
+                            </Table.Cell>
+                        ) : null}
+                        <Table.Cell align="right">
+                            <span className="tabular-nums font-medium text-ink">
+                                {formatCurrency(item.subtotal)}
+                            </span>
+                        </Table.Cell>
+                    </Table.Row>
+                ))}
+            </Table.Body>
+        </Table>
     );
 }
 

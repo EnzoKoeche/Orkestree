@@ -6,6 +6,7 @@ import {
     Max,
     MaxLength,
     Min,
+    MinLength,
 } from 'class-validator';
 
 export class UpdateProposalDto {

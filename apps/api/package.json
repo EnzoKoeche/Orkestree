@@ -8,9 +8,13 @@
         "start": "node dist/main.js",
         "migrate": "prisma migrate deploy",
         "migrate:dev": "prisma migrate dev",
+        "seed": "prisma db seed",
         "studio": "prisma studio",
         "generate": "prisma generate",
         "lint": "eslint 'src/**/*.ts'"
+    },
+    "prisma": {
+        "seed": "ts-node --transpile-only prisma/seed.ts"
     },
     "dependencies": {
         "@nestjs/common": "^10.3.0",
@@ -21,6 +25,7 @@
         "@nestjs/passport": "^10.0.3",
         "@nestjs/event-emitter": "^2.0.4",
         "@nestjs/bull": "^10.1.1",
+        "@nestjs/throttler": "^5.1.2",
         "bull": "^4.12.2",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
@@ -36,6 +41,7 @@
         "@types/node": "^20.11.0",
         "@types/passport-jwt": "^4.0.1",
         "prisma": "^5.10.0",
+        "ts-node": "^10.9.2",
         "ts-node-dev": "^2.0.0",
         "typescript": "^5.3.3"
     }

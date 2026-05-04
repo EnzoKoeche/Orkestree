@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Orkestree — local dev infra
+#
+# Brings up Postgres + Redis on the ports the API expects (5432 / 6379) so
+# `pnpm --filter @orkestree/api dev` and the smoke scripts can run end-to-end.
+#
+# Usage:
+#   docker compose up -d            # start in background
+#   docker compose ps               # confirm both services are healthy
+#   docker compose logs -f postgres # tail logs
+#   docker compose down             # stop (volumes preserved)
+#   docker compose down -v          # stop + WIPE data (use only for reset)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: orkestree-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: orkestree_dev_password
+      POSTGRES_DB: orkestree_dev
+    volumes:
+      - orkestree-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orkestree_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - orkestree-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: orkestree-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - orkestree-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - orkestree-network
+
+volumes:
+  orkestree-postgres-data:
+  orkestree-redis-data:
+
+networks:
+  orkestree-network:
+    driver: bridge

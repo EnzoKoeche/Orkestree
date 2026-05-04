@@ -52,4 +52,10 @@ Operações pesadas (geração de PDF, envio de email, chamadas a IA, refresh de
 
 ## Nota de implementação
 
-Em maio/2026 o backend usa `EventEmitter2` direto (in-process) para eventos como `proposal.created`, `proposal.transitioned`, `request.created`, etc. — emitidos fora do callback de `$transaction` (post-commit). A tabela `OutboxEvent` e o worker dedicado estão na direção arquitetural mas ainda não foram materializados; ficam para quando algum evento precisar atravessar processo (ex.: integração com worker BullMQ separado para PDF/email).
+Em maio/2026 a realidade do código diverge da decisão em três pontos — todos no roadmap, nenhum bloqueia:
+
+1. **Bull v4, não BullMQ.** `package.json` tem `@nestjs/bull` + `bull@4.12.2` (Bull v4 clássico, APIs `Process`/`Queue`). Imports `from 'bullmq'` quebram. Migrar para `@nestjs/bullmq` + `bullmq@5` está rastreado como tarefa no Notion (TASK-7, junto do port do `proposal-expiry-job`).
+2. **`EventEmitter2` in-process, não `OutboxEvent`.** Eventos como `proposal.created`, `proposal.transitioned`, `request.created` são emitidos via `EventEmitter2.emit(...)` fora do callback de `$transaction` (post-commit). A tabela `OutboxEvent` e o worker dedicado entram quando algum evento precisar atravessar processo (ex.: PDF, email).
+3. **`apps/worker` não existe ainda.** Só `apps/api`. Jobs Bull v4 não têm processador wired ao `AppModule` em maio/2026.
+
+A decisão segue válida — apenas ainda não foi totalmente implementada.

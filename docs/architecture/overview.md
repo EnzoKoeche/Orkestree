@@ -18,10 +18,10 @@ Não é um CRUD genérico. É um sistema operacional para empresas de serviço c
 |---|---|
 | Backend | NestJS modular monolith |
 | ORM | Prisma + PostgreSQL |
-| Cache / fila | Redis + BullMQ |
-| Frontend | Next.js 14 App Router |
-| PDF | Puppeteer |
-| Storage | Abstração com drivers local + S3/R2 |
+| Cache / fila | Redis + **Bull v4** (`@nestjs/bull` + `bull@4`) — migração pra BullMQ no roadmap |
+| Frontend | Next.js 14 App Router (planejado, ainda não materializado em `apps/web`) |
+| PDF | Puppeteer (planejado, ainda não no `package.json`) |
+| Storage | Abstração com drivers local + S3/R2 (planejado) |
 
 Modular monolith por escolha consciente (ver [ADR-0001](../adr/0001-modular-monolith.md)). Microserviços ficam para quando módulos individuais precisarem escalar separadamente.
 

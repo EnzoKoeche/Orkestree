@@ -36,3 +36,7 @@ Adotar **modular monolith** com event-driven interno via Outbox pattern + BullMQ
 ## Fonte
 
 - Notion: [Modular Monolith ao invés de microserviços](https://www.notion.so/355b731e18158189b466e2f9813153c6)
+
+## Nota de implementação
+
+Em maio/2026 o repo tem apenas `apps/api`. `apps/worker` mencionado na decisão ainda não foi materializado — jobs assíncronos são planejados mas ainda não estão wired ao `AppModule`. Ver [ADR-0006](./0006-event-driven-outbox-bullmq.md) sobre a fila (Bull v4 hoje, BullMQ no roadmap).

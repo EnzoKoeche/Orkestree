@@ -74,6 +74,8 @@ Vantagem: defense-in-depth. Se algum service esquecer o select role-aware (Mecan
 
 **Não substitui o Mecanismo A** — sem o A, o dado vaza para logs, traces e qualquer cache de objeto antes do interceptor agir.
 
+> **Mecanismo B só cobre o que está no registry.** Campos sensíveis que **não** são mapeados (ex.: `Proposal.notes` interno) ficam **exclusivamente** sob proteção do Mecanismo A. Esquecer o select certo numa rota nova ou num pipeline de PDF vaza sem o interceptor pegar — o interceptor não sabe que o campo é sensível. Regra: ou cadastra no registry, ou **garante** que está fora dos selects `*_STANDARD` e `*_CLIENT` em todos os call sites.
+
 ## Permissões resolvidas (canSeeField, isAllowed)
 
 `PermissionResolverService` resolve em três camadas:

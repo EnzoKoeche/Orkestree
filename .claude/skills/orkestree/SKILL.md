@@ -5,7 +5,7 @@ description: Convenções e invariantes do Orkestree (NestJS modular monolith, P
 
 # Orkestree — Convenções e invariantes
 
-SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Prisma + Postgres + Redis + BullMQ. Frontend Next.js 14 App Router. Roles: OWNER, ADMIN, FINANCEIRO, OPERACIONAL, CLIENTE.
+SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Prisma + Postgres + Redis + **Bull v4** (`@nestjs/bull` + `bull@4`; migração pra BullMQ no roadmap). Frontend Next.js 14 App Router (planejado). Roles: OWNER, ADMIN, FINANCEIRO, OPERACIONAL, CLIENTE.
 
 ## Always check first
 
@@ -67,11 +67,15 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 ## Gotchas (erros que já aconteceram nesta base)
 
 - Esquecer `companyId` em raw SQL = vazamento sem alarme (sem trigger no banco).
+- **Composite FKs `(companyId, X)` vivem em migrations SQL puro**, não no `schema.prisma`. Antes de adicionar relações novas, conferir as migrations — comentários `// Raw SQL: FK ...` no schema indicam quais existem.
+- **Bull v4, não BullMQ.** `package.json` tem `@nestjs/bull` + `bull@4`. Imports `from 'bullmq'` quebram. APIs diferentes (Worker vs Process, QueueEvents, etc.).
+- **`Proposal.notes` interno NÃO está no `SensitiveField` enum.** É protegido apenas pelo Mecanismo A (select role-aware). Esquecer o select certo num PDF ou rota nova vaza sem o `FieldFilterInterceptor` pegar.
 - `Decimal` serializa como string em JSON; não compare com `number` direto no frontend nem em testes.
 - Transitions sem row-level check vazam se algum tenant ativar override de permissão para CLIENTE — sempre considerar o pior caso de override.
 - `updateProposal` com discount mas sem itens devolve totais zerados — comportamento intencional, não regressão.
 - Pular `pnpm prisma migrate status` antes do PR esconde drift entre `schema.prisma` e DB real.
 - Amend de commit após pre-commit hook falhar pode destruir trabalho — sempre criar commit novo.
+- **Memberships órfãs intencionais:** quando user sai e volta na mesma company, **nova `CompanyMembership`** é criada (não a antiga reativada). Overrides de permissão antigos viram órfãos seguros — não tente reaproveitar.
 
 ## PR discipline
 

@@ -57,6 +57,10 @@ ALTER TABLE "ProposalItem"
 
 Isso é a integridade no banco. A camada de aplicação ainda valida, mas o banco é a rede de segurança final.
 
+> ⚠️ **Composite FKs vivem em migrations SQL puro, NÃO no `schema.prisma`.** O Prisma só conhece FKs simples; as compostas estão em arquivos `migration.sql`. O schema sinaliza a existência delas em comentários `// Raw SQL: FK ...` em cima dos models. **Antes de adicionar relação nova entre tabelas de domínio**, ler as migrations existentes pra entender o padrão e replicar.
+
+`companyId` também é **denormalizado em quase todas as tabelas filhas** (`RequestStageHistory`, `ProposalItem`, `TaskComment`, etc.), mesmo quando seria derivável via parent. Motivo: queries quentes filtram direto por tenant sem JOIN, e as composite FKs garantem que o denormalizado nunca diverge do parent.
+
 ## Numbering sequencial por tenant
 
 Entidades como `ServiceRequest`, `Client`, `Proposal` têm `number` sequencial **por company**. Para serializar a geração:

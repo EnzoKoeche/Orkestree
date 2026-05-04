@@ -27,7 +27,7 @@ apps/api/src/<module>/
 
 1. Adicionar models em `apps/api/prisma/schema.prisma`.
 2. Toda tabela de domínio tem **`companyId`** + composite indexes onde fizer sentido (`@@index([companyId, ...])`).
-3. FKs cross-domain compostas em `(companyId, id)` — declaradas em `Raw SQL:` comments e materializadas em migration.
+3. FKs cross-domain compostas em `(companyId, id)` — Prisma só conhece FKs simples, então as compostas vão em **migration SQL puro** (`ALTER TABLE … ADD FOREIGN KEY …`). Adicionar comentário `// Raw SQL: FK (companyId, X) → Parent(companyId, id) ON DELETE …` no model do schema pra futuro Claude saber que existe.
 4. Numerar entidades operacionais com `number Int` + `@@unique([companyId, number])`.
 5. `prisma migrate dev --name <nome-curto>`. Conferir migration gerada antes de commitar.
 

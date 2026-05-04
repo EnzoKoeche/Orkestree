@@ -47,10 +47,7 @@ export class StageTransitionsService {
         actorMembership: Pick<CompanyMembership, 'id' | 'companyId' | 'role' | 'userId'>,
         dto: TransitionStageDto,
     ) {
-        let eventPayload: { requestId: string; fromStageId: string; toStageId: string } | null =
-            null;
-
-        await this.prisma.$transaction(async (tx) => {
+        const eventPayload = await this.prisma.$transaction(async (tx) => {
             // Lock the request row for the duration of this transaction
             const [request] = await tx.$queryRaw<
                 Array<{
@@ -171,12 +168,10 @@ export class StageTransitionsService {
                 after: { stageId: dto.toStageId, note: dto.note ?? null },
             });
 
-            eventPayload = { requestId, fromStageId, toStageId: dto.toStageId };
+            return { requestId, fromStageId, toStageId: dto.toStageId };
         });
 
-        if (eventPayload) {
-            this.events.emit('request.transitioned', { companyId, ...eventPayload });
-        }
+        this.events.emit('request.transitioned', { companyId, ...eventPayload });
     }
 
     // ── Manual Assignment ─────────────────────────────────────────────────────

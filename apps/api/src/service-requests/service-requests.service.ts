@@ -500,3 +500,4 @@ export class ServiceRequestsService {
 
         return this.fieldValuesService.getFieldValues(companyId, requestId);
     }
+}

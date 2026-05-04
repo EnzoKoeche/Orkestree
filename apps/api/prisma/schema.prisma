@@ -203,8 +203,6 @@ model User {
 
   memberships             CompanyMembership[]
   configAuditLogs         ConfigAuditLog[]
-  userPermissionOverrides UserPermissionOverride[]
-  userFieldOverrides      UserFieldPermissionOverride[]
 
   @@index([email])
 }

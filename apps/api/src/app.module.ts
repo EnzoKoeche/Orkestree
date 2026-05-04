@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -35,6 +36,17 @@ import { TasksModule } from './tasks/tasks.module';
 @Module({
     imports: [
         // Infrastructure
+        // ConfigModule MUST be first: it populates process.env from .env, and
+        // the factories below (RedisModule.forRoot reading REDIS_URL,
+        // JwtModule reading JWT_SECRET, etc.) execute in this order — without
+        // .env loaded first they read undefined values and either crash on
+        // boot (JwtStrategy refuses JWT_SECRET < 16 chars) or silently fall
+        // back to localhost defaults that mask config errors.
+        ConfigModule.forRoot({
+            isGlobal: true,
+            envFilePath: ['.env'],
+            cache: true,
+        }),
         EventEmitterModule.forRoot({ wildcard: false, maxListeners: 20 }),
         ThrottlerModule.forRoot([
             {

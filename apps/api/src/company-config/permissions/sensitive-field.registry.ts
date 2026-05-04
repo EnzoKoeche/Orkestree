@@ -9,6 +9,7 @@ import { SensitiveField } from '@prisma/client';
 
 export const SENSITIVE_FIELD_REGISTRY: Readonly<Record<string, SensitiveField>> = {
     internalCost: SensitiveField.INTERNAL_COST,
+    totalCost: SensitiveField.INTERNAL_COST,
     margin: SensitiveField.MARGIN,
     supplierPrice: SensitiveField.SUPPLIER_PRICE,
     grossProfit: SensitiveField.GROSS_PROFIT,

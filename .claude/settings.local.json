@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" status --short)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" branch --show-current)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" log --oneline -25)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" status)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" stash list)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" diff --cached --stat)",
+      "Bash(git -C \"C:/Windows/System32/Orkestree\" diff --stat)",
+      "Bash(git *)",
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc -p tsconfig.build.json --noEmit)",
+      "Bash(pnpm --filter @orkestree/api build)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm --filter @orkestree/api exec prisma generate)",
+      "Bash(echo \"---EXIT: $?---\")",
+      "Bash(gh pr create --title 'feat\\(tasks\\): add real TasksModule foundation' --body ' *)",
+      "PowerShell(winget install *)",
+      "PowerShell(gh *)"
+    ]
+  }
+}

@@ -1,5 +1,33 @@
 # Orkestree — Master Project Context for Claude Code
 
+## 0. Sistema de Conhecimento
+
+Este projeto usa dois sistemas de conhecimento, configurados na pasta `docs/` e no Notion. Não é decorativo — leia antes de começar qualquer coisa.
+
+**Antes de começar qualquer tarefa:**
+
+1. Ler `docs/README.md` para entender a divisão Obsidian/Notion.
+2. Buscar no Notion (página "🧠 Orkestree — Cérebro do Projeto"):
+   - Tarefas em "✅ Tarefas" com Status `TODO` ou `Em Progresso`
+   - Bugs em "🐛 Bugs Conhecidos" com Severidade `Alta` ou `Crítica` em status `Aberto`/`Investigando`
+   - Decisões recentes em "🏛️ Decisões Técnicas" com Status `Aceita`
+3. Inspecionar branch atual e estado real do repo (`git status`, `git log`, filesystem).
+
+**Ao final da sessão:**
+
+1. Registrar resumo + próximos passos em "💬 Sessões Claude Code" (Notion).
+2. Atualizar tarefas concluídas/criadas em "✅ Tarefas".
+3. Registrar bugs encontrados em "🐛 Bugs Conhecidos".
+4. Se uma decisão arquitetural foi tomada **e estabilizada**, criar ADR em `docs/adr/` **E** entrada correspondente em "🏛️ Decisões Técnicas".
+
+**Divisão de responsabilidade:**
+
+- `docs/` (este repo) = documentação técnica versionada que vive com o código (arquitetura, ADRs, runbooks).
+- Notion = gestão operacional (tarefas, bugs, sessões, decisões em formação).
+- Decisões nascem no Notion (rápido, baixa fricção) e migram para `docs/adr/` quando estabilizam — citando a página Notion como fonte.
+
+---
+
 ## 1. Product vision
 
 Orkestree is a multi-tenant SaaS for service companies.
@@ -349,3 +377,31 @@ Before making any changes in a new session, do this:
   4. what should not be touched
 
 Do not assume previous plans are merged unless you confirm them in the repository.
+
+---
+
+## 15. Project memory wiki (Obsidian)
+
+There is a persistent project-memory wiki at:
+
+```
+C:\Users\enzo\Documents\Obsidian Vault\orkestree
+```
+
+It is an Obsidian vault maintained by Claude. Its purpose: accumulate non-obvious knowledge about Orkestree (bugs and their root causes, architectural decisions and why, module deep-dives, gotchas, divergences between this CLAUDE.md and the actual repo state) so future sessions debug faster instead of re-investigating from scratch.
+
+**Workflow for every session:**
+
+1. **Before investigating anything**, read at minimum:
+   - `<vault>\index.md` — catalog
+   - `<vault>\gotchas.md` — known traps
+   - `<vault>\modulos\<module-being-touched>.md` — module-specific knowledge
+   - For bug-shaped tasks: grep `<vault>\bugs\` for symptom keywords.
+2. **Do the work in this repo as usual** (read/inspect/implement here).
+3. **After learning something worth remembering**, update the vault:
+   - Bug resolved → `bugs/<slug>.md` + append entry to `log.md`.
+   - Architectural decision → `decisoes/<slug>.md` + `log.md`.
+   - Non-obvious module insight → update `modulos/<name>.md`; if it's a trap, also `gotchas.md`.
+   - Drift between this CLAUDE.md and reality → record in `gotchas.md` or relevant module.
+
+**Hard rule:** the vault is the **only** place Claude writes outside this repo. The vault never modifies this repo, except this section. Templates and the maintenance protocol live in `<vault>\CLAUDE.md`.

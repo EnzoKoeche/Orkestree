@@ -30,6 +30,16 @@ ALTER TABLE "WorkflowStage"
   ADD CONSTRAINT uq_stage_company_id
   UNIQUE ("companyId", "id");
 
+-- ServiceType(companyId, id): FK target for CustomField and ServiceRequest.
+-- The schema declares @@unique([companyId, code]) but NOT (companyId, id).
+-- The original migration relied on a comment that misnamed this as "from
+-- Prisma schema" — it was always meant to live here. Patched 2026-05-04
+-- after a P3018 caught the gap during the first end-to-end migrate against
+-- a fresh database.
+ALTER TABLE "ServiceType"
+  ADD CONSTRAINT uq_service_type_company_id
+  UNIQUE ("companyId", "id");
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- SECTION 2: Composite foreign keys — tenant consistency enforcement
 --
@@ -117,15 +127,20 @@ CREATE UNIQUE INDEX udx_one_initial_stage
   ON "WorkflowStage" ("workflowId")
   WHERE "isInitial" = true;
 
--- Exactly one default proposal template per company.
-CREATE UNIQUE INDEX udx_one_default_proposal_template
-  ON "ProposalTemplate" ("companyId")
-  WHERE "isDefault" = true;
-
--- Exactly one default PDF template per (company, type).
-CREATE UNIQUE INDEX udx_one_default_pdf_template
-  ON "PdfTemplate" ("companyId", "type")
-  WHERE "isDefault" = true;
+-- TODO: ProposalTemplate and PdfTemplate models do not yet exist in
+-- schema.prisma — only the enums PdfTemplateType and TemplateEngine are
+-- declared. The two partial unique indexes below are kept as design intent
+-- (see Design Reference in Notion: "Templates com versionamento") and must
+-- be re-enabled in a follow-up migration when those models land. Tracked
+-- as a TODO task in Notion ✅ Tarefas.
+--
+-- CREATE UNIQUE INDEX udx_one_default_proposal_template
+--   ON "ProposalTemplate" ("companyId")
+--   WHERE "isDefault" = true;
+--
+-- CREATE UNIQUE INDEX udx_one_default_pdf_template
+--   ON "PdfTemplate" ("companyId", "type")
+--   WHERE "isDefault" = true;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- SECTION 4: Service-requests bounded context

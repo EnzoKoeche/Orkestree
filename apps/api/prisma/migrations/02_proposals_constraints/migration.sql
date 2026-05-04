@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- proposals foundation — supplemental raw SQL migration
--- File: prisma/migrations/01_proposals_constraints/migration.sql
+-- File: prisma/migrations/02_proposals_constraints/migration.sql
 --
 -- Purpose: composite foreign keys, composite unique targets, and partial
 -- unique indexes that Prisma cannot express in schema syntax for the
@@ -9,7 +9,7 @@
 -- Execution order: this file MUST run after `prisma migrate deploy` has
 -- applied the Prisma-managed DDL for Proposal / ProposalItem /
 -- ProposalStatusHistory / ProposalFieldValue and AFTER the
--- 00_supplemental_constraints migration that established the composite
+-- 01_supplemental_constraints migration that established the composite
 -- targets on ServiceRequest, Client, and CustomField.
 -- ═══════════════════════════════════════════════════════════════════════════
 

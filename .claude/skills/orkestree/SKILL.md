@@ -75,7 +75,6 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 - `updateProposal` com discount mas sem itens devolve totais zerados — comportamento intencional, não regressão.
 - Pular `pnpm prisma migrate status` antes do PR esconde drift entre `schema.prisma` e DB real.
 - Amend de commit após pre-commit hook falhar pode destruir trabalho — sempre criar commit novo.
-- **Memberships órfãs intencionais:** quando user sai e volta na mesma company, **nova `CompanyMembership`** é criada (não a antiga reativada). Overrides de permissão antigos viram órfãos seguros — não tente reaproveitar.
 
 ## PR discipline
 

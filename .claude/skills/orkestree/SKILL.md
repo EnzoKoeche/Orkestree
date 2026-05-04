@@ -56,6 +56,7 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 - Controller: `@UseGuards(JwtAuthGuard, CompanyMemberGuard, ResourcePermissionGuard)` + `@Controller('companies/:companyId/<resource>')` + `@RequirePermission(...)`.
 - DTOs com `class-validator`; `ValidationPipe` global já com `whitelist + forbidNonWhitelisted + transform`.
 - Services pequenos e responsivos a uma fatia do domínio. Transitions e mutações pesadas em arquivos próprios.
+- **Exceção consciente: `MembershipsController` é anêmico** (read-only, sem service). Quando adicionar mutações (invite/revoke/role-change), criar `MembershipsService` para carregar transação + audit + eventos pós-commit.
 
 ## Frontend rules
 

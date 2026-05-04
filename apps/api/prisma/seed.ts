@@ -54,13 +54,15 @@ async function hashPassword(plain: string): Promise<string> {
 }
 
 // ─── Constants the smoke test depends on ────────────────────────────────────
-// These are read by apps/api/scripts/smoke-auth.sh. Don't rename without
-// updating that script in the same commit.
+// Read from SEED_USER_* env vars when present, falling back to the original
+// hardcoded defaults so a fresh clone with no .env still seeds successfully.
+// apps/api/scripts/smoke-auth.sh honours the same env vars with the same
+// fallback semantics — keep the two in lockstep.
 const SEED_USER = {
-    email: 'owner@orkestree.dev',
-    password: 'orkestree-dev-password',
-    firstName: 'Olivia',
-    lastName: 'Owner',
+    email: process.env['SEED_USER_EMAIL'] ?? 'owner@orkestree.dev',
+    password: process.env['SEED_USER_PASSWORD'] ?? 'orkestree-dev-password',
+    firstName: process.env['SEED_USER_FIRST_NAME'] ?? 'Olivia',
+    lastName: process.env['SEED_USER_LAST_NAME'] ?? 'Owner',
 };
 
 // CNPJs are syntactically valid 14-digit strings. We don't compute the

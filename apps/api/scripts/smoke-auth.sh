@@ -37,8 +37,12 @@
 set -euo pipefail
 
 API_URL="${API_URL:-http://localhost:3000}"
-EMAIL="${EMAIL:-owner@orkestree.dev}"
-PASSWORD="${PASSWORD:-orkestree-dev-password}"
+# Honour SEED_USER_* env vars so the script picks up whatever credentials
+# prisma/seed.ts wrote. Falls back to the original hardcoded defaults so a
+# clean clone with no .env still works. EMAIL / PASSWORD overrides win over
+# both — useful for one-off curl-against-prod sanity checks.
+EMAIL="${EMAIL:-${SEED_USER_EMAIL:-owner@orkestree.dev}}"
+PASSWORD="${PASSWORD:-${SEED_USER_PASSWORD:-orkestree-dev-password}}"
 
 # ── Preflight ───────────────────────────────────────────────────────────────
 if ! command -v curl >/dev/null 2>&1; then

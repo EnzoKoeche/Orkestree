@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -9,9 +10,23 @@ import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProposalJobsModule } from './proposals/jobs/proposal-jobs.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { TasksModule } from './tasks/tasks.module';
+
+// BullMQ root connection. Parsed from REDIS_URL so the same env var that
+// drives the permission cache (RedisModule.forRoot above) also drives the
+// job queue. Sub-modules call BullModule.registerQueue(...) to declare
+// individual queues; they inherit this connection without re-declaring it.
+function parseRedisUrl(url: string): { host: string; port: number; password?: string } {
+    const parsed = new URL(url);
+    return {
+        host: parsed.hostname,
+        port: Number.parseInt(parsed.port || '6379', 10),
+        password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    };
+}
 
 // Throttler is wired here once, globally. Default is intentionally permissive
 // (60/min) so this guard never silently bites tenant-scoped routes. Per-route
@@ -59,6 +74,11 @@ import { TasksModule } from './tasks/tasks.module';
             type: 'single',
             url: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
         }),
+        BullModule.forRootAsync({
+            useFactory: () => ({
+                connection: parseRedisUrl(process.env['REDIS_URL'] ?? 'redis://localhost:6379'),
+            }),
+        }),
         PrismaModule,
         // Identity / cross-cutting
         AuthModule,
@@ -69,6 +89,7 @@ import { TasksModule } from './tasks/tasks.module';
         ClientsModule,
         TasksModule,
         ProposalsModule,
+        ProposalJobsModule,
     ],
     providers: [
         {

@@ -3,24 +3,24 @@ import { cn } from '@/lib/utils';
 // ─────────────────────────────────────────────────────────────────────────────
 // Logo — orkestree wordmark + "O" symbol
 //
-// The symbol is a hollow ring (the "O") with four short radial ticks at the
-// cardinal points, evoking orchestration / coordinated outputs without being
-// busy. Stroke-width 2 in a 24-unit viewBox keeps the geometry legible from
-// 16 px (sidebar collapsed, favicon) up to 64+ px (sign-in screen).
+// Storyline: a hollow ring is the letterform "O". A single indigo dot,
+// deliberately offset to the right (not centered), reads as the
+// orchestrating point — the centre that conducts everything around it.
+// Off-centre placement avoids two false readings the centred version would
+// invite: a loading spinner and a power button. Maximum colour restraint —
+// one neutral ring + one chromatic point — lets the mark scale cleanly
+// without losing identity at favicon sizes.
 //
 // Colour split:
-//   - main ring:    `currentColor` → resolves to text-foreground on the
-//                   parent element. Keeps the logo monochrome on neutral
-//                   surfaces.
-//   - radial ticks: `text-primary`  → resolves to indigo-500 via the brand
-//                   override in globals.css. The only chromatic accent in
-//                   the logo, matching how primary actions surface across
-//                   the app.
+//   - ring:  `currentColor` → resolves to text-foreground on the parent.
+//            Keeps the mark monochrome on neutral surfaces.
+//   - dot:   `text-primary` → resolves to indigo-500 (`#6366f1`) via the
+//            brand override in globals.css. The only chromatic accent in
+//            the logo, matching how primary actions surface in the app.
 //
 // Three variants:
-//   - 'symbol'   :  ring + ticks only. Use in sidebar collapsed, favicon,
-//                   loading splashes. Square aspect.
-//   - 'wordmark' :  "orkestree" lowercase, Inter 600. Use sparingly — most
+//   - 'symbol'   :  ring + dot only. Sidebar collapsed, favicon, splash.
+//   - 'wordmark' :  "orkestree" lowercase, Inter 600. Used rarely — most
 //                   places want 'full'.
 //   - 'full'     :  symbol + wordmark side-by-side. Default.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,16 +34,23 @@ interface LogoProps {
     className?: string;
 }
 
+// 20 / 28 / 40 px hits the three real contexts: sm = sidebar collapsed and
+// list-row leading icon (minimum legible for the dot to read), md = header
+// default, lg = sign-in hero. All multiples of 4. lg=40 is intentionally
+// confident-but-not-shouty so the dark-minimalist aesthetic is preserved.
 const SYMBOL_PX: Record<LogoSize, number> = {
     sm: 20,
     md: 28,
-    lg: 44,
+    lg: 40,
 };
 
+// Wordmark sizes track the body / large / page-title rhythm of the rest of
+// the type system — 14 / 18 / 24 px — so the logo never looks "off scale"
+// next to nearby text.
 const WORDMARK_TEXT_CLASS: Record<LogoSize, string> = {
-    sm: 'text-base leading-none',
-    md: 'text-xl leading-none',
-    lg: 'text-3xl leading-none',
+    sm: 'text-sm leading-none',
+    md: 'text-lg leading-none',
+    lg: 'text-2xl leading-none',
 };
 
 const GAP_CLASS: Record<LogoSize, string> = {
@@ -66,21 +73,26 @@ function Symbol({ size = 'md', className }: { size?: LogoSize; className?: strin
             strokeLinejoin="round"
             className={cn('shrink-0', className)}
         >
-            {/* Main ring — letterform "O" */}
+            {/* Ring — neutral "O" letterform. */}
             <circle
                 cx="12"
                 cy="12"
-                r="6"
+                r="7"
                 stroke="currentColor"
                 strokeWidth="2"
             />
-            {/* Cardinal ticks — orchestration accents in indigo */}
-            <g className="text-primary" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="1.5" x2="12" y2="4" />
-                <line x1="22.5" y1="12" x2="20" y2="12" />
-                <line x1="12" y1="22.5" x2="12" y2="20" />
-                <line x1="1.5" y1="12" x2="4" y2="12" />
-            </g>
+            {/* Conducting dot — single indigo point offset to the right of
+                the ring's geometric centre. The off-centre position is
+                deliberate: a centred dot reads as a loading spinner or
+                power button; pushing it east turns it into "the centre
+                that orchestrates", anchored without being symmetrical. */}
+            <circle
+                cx="16.5"
+                cy="12"
+                r="2"
+                fill="currentColor"
+                className="text-primary"
+            />
         </svg>
     );
 }

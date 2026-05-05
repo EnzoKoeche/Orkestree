@@ -259,7 +259,7 @@ export class ProposalsService {
             // ── 3. Advisory lock keyed by company:proposals to serialize
             //       proposal number generation without contending with
             //       request / client / task generators.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':proposals'})::bigint)`;
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':proposals'})::bigint)`;
 
             // ── 4. Generate sequential proposal number.
             const [maxRow] = await tx.$queryRaw<Array<{ max: number | null }>>`

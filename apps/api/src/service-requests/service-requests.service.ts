@@ -177,7 +177,7 @@ export class ServiceRequestsService {
 
             // ── 5. Acquire a transaction-scoped advisory lock keyed by companyId.
             //       Serializes request number generation for this company.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId})::bigint)`;
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId})::bigint)`;
 
             // ── 6. Generate sequential request number
             const [maxRow] = await tx.$queryRaw<Array<{ max: number | null }>>`

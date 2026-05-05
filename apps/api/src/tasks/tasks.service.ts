@@ -142,7 +142,7 @@ export class TasksService {
             }
 
             // Acquire transaction-scoped advisory lock for number generation.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':tasks'})::bigint)`;
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':tasks'})::bigint)`;
 
             const [maxRow] = await tx.$queryRaw<Array<{ max: number | null }>>`
                 SELECT MAX(number)::int AS max

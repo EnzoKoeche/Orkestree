@@ -42,7 +42,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Match everything that isn't an API route, Next internals, or a static
-    // file (anything containing a dot, e.g. favicon.ico, *.png, *.css).
-    matcher: ['/((?!api|_next|.*\\..*).*)'],
+    // Match every route except Next internals, /api, and /favicon.ico.
+    // The previous pattern excluded any dot-containing path; that variant
+    // failed to fire on `/` reliably on the Edge runtime. Simpler exclusion
+    // list reads cleanly and covers the only static asset shipped today.
+    //
+    // Phase 6 follow-up: when files land in apps/web/public (logo PNG,
+    // OG image, …), extend this to skip them, e.g.
+    //   '/((?!_next|api|favicon.ico|images|fonts).*)'
+    matcher: ['/((?!_next|api|favicon.ico).*)'],
 };

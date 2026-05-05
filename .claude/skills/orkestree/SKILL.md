@@ -5,7 +5,7 @@ description: Convenções e invariantes do Orkestree (NestJS modular monolith, P
 
 # Orkestree — Convenções e invariantes
 
-SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Prisma + Postgres + Redis + **Bull v4** (`@nestjs/bull` + `bull@4`; migração pra BullMQ no roadmap). Frontend Next.js 14 App Router (planejado). Roles: OWNER, ADMIN, FINANCEIRO, OPERACIONAL, CLIENTE.
+SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Prisma + Postgres + Redis + **BullMQ** (`@nestjs/bullmq` + `bullmq@5`). Frontend Next.js 14 App Router (planejado). Roles: OWNER, ADMIN, FINANCEIRO, OPERACIONAL, CLIENTE.
 
 ## Always check first
 
@@ -23,6 +23,11 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
   - Eventos via `EventEmitter2.emit(...)` **apenas após o commit** (fora do callback de `$transaction`).
 - Numbering sequencial por tenant: advisory lock `pg_advisory_xact_lock(hashtext('${companyId}:${entity}')::bigint)` antes do `MAX(number)+1`.
 - Tenant safety em raw SQL: todo `SELECT/UPDATE/DELETE` raw deve filtrar `"companyId" = ${companyId}`. Não há trigger no banco — esquecer = vazamento silencioso.
+- **Padrão de leitura de env vars**:
+  - **Bootstrap factories** (`forRoot`, `forRootAsync` no `AppModule`) leem `process.env` DIRETO. Ex: `BullModule.forRootAsync`, `RedisModule.forRoot`, qualquer `JwtModule.registerAsync` futuro.
+  - **Runtime services** (qualquer `@Injectable` consumido após bootstrap) usam `ConfigService.get()` via DI.
+  - Razão: factories de bootstrap podem rodar antes do DI estar completo. `process.env` já está populado pelo `ConfigModule.forRoot` (que é o PRIMEIRO import do AppModule, garantia do PR #16), mas `ConfigService` nem sempre é injetável de forma confiável em factories de mesmo nível.
+  - Estabelecido no PR #16 (ConfigModule wiring) e seguido por todos os módulos de infra (Redis, Bull, futuro JWT factory). Misturar `ConfigService` em uma factory enquanto outra usa `process.env` no mesmo AppModule é inconsistência — ou padroniza tudo, ou mantém o padrão.
 
 ## Field-level auth (CRÍTICO)
 
@@ -72,7 +77,7 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 - **Composite FKs em raw SQL precisam de UNIQUE target explícito.** Schema Prisma só conhece FKs simples; antes de adicionar FK composta numa migration manual, GARANTE que o `UNIQUE("companyId", "id")` (ou equivalente) já existe na tabela alvo (criado via `ALTER TABLE … ADD CONSTRAINT uq_…` em migration anterior ou nessa mesma, antes do `ADD FOREIGN KEY`). Comentário `// Raw SQL: UNIQUE ...` no schema indica **intent**, **NÃO** implementação. Auditar o SQL completo antes de aplicar — bug latente custou 1 sessão pra debugar.
 - **Schema tem enums declarados preventivamente para módulos não implementados** (ex.: `PdfTemplateType`, `TemplateEngine`). Existência do enum NÃO indica que o módulo está pronto. Verificar código consumidor + existência da tabela associada antes de assumir feature funcional.
 - **Migrations: ordem é lexicográfica** (`00_`, `01_`, `02_`, ...). `prisma migrate dev` gera com timestamp — convenção mista hoje. Ao adicionar nova migration manual, manter prefixo numérico em ordem. Migration baseline criada em 2026-05-04 via `prisma migrate diff --from-empty` (não `migrate dev`) pra preservar nome `00_baseline`. Se usar `migrate dev` no futuro, considera renomear a pasta gerada pra manter convenção.
-- **Bull v4, não BullMQ.** `package.json` tem `@nestjs/bull` + `bull@4`. Imports `from 'bullmq'` quebram. APIs diferentes (Worker vs Process, QueueEvents, etc.).
+- **BullMQ Workers são separados de Queues.** Producer (`Queue`, via `@InjectQueue(NAME)`) e consumer (`@Processor(NAME)` extending `WorkerHost`) podem viver em apps diferentes (`apps/worker` futuro). Em `apps/api` hoje os 2 vivem juntos no mesmo módulo (`ProposalJobsModule`). Quando separar, processor migra pro app/worker e o `BullModule.registerQueue` da API fica só com producer — connection segue compartilhada via `REDIS_URL`. Repeatable cron usa `{ repeat: { pattern: '*/5 * * * *' } }` (BullMQ 5), não `{ cron }` (Bull v4).
 - **`Proposal.notes` interno NÃO está no `SensitiveField` enum.** É protegido apenas pelo Mecanismo A (select role-aware). Esquecer o select certo num PDF ou rota nova vaza sem o `FieldFilterInterceptor` pegar.
 - `Decimal` serializa como string em JSON; não compare com `number` direto no frontend nem em testes.
 - Transitions sem row-level check vazam se algum tenant ativar override de permissão para CLIENTE — sempre considerar o pior caso de override.

@@ -65,7 +65,7 @@ export function EmptyState({
                 className,
             )}
         >
-            <h3 className="text-base font-semibold text-foreground">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
             {description ? (
                 <p className="max-w-md text-sm text-muted-foreground">{description}</p>
             ) : null}
@@ -89,7 +89,7 @@ export function ErrorState({
     if (status === 401) title = 'Sua sessão expirou. Entre novamente.';
     else if (status === 403) title = 'Você não tem permissão para essa ação.';
     else if (status === 404) title = 'Não encontramos o que você procura.';
-    else if (status === 409) title = 'Já existe um registro em conflito.';
+    else if (status === 409) title = 'Esse item já foi alterado por outra pessoa.';
     else if (status === 503) title = 'Serviço temporariamente indisponível.';
 
     const message =

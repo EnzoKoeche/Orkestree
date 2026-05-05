@@ -48,7 +48,7 @@ const WORDMARK_TEXT_CLASS: Record<LogoSize, string> = {
 
 const GAP_CLASS: Record<LogoSize, string> = {
     sm: 'gap-2',
-    md: 'gap-2.5',
+    md: 'gap-2',
     lg: 'gap-3',
 };
 

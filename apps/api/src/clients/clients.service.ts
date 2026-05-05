@@ -120,7 +120,7 @@ export class ClientsService {
             //       taxId uniqueness is checked after this lock (step 3) so that concurrent
             //       creates for the same company are serialized and the pre-flight read
             //       is race-free under READ COMMITTED isolation.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':clients'})::bigint)`;
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${companyId + ':clients'})::bigint)`;
 
             // ── 3. Validate taxId uniqueness — after advisory lock (see step 2).
             //       The DB partial unique index is the hard safety net; this gives a

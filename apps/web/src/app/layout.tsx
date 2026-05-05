@@ -4,6 +4,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
+import { SessionProvider } from '@/lib/session';
 import './globals.css';
 
 const inter = Inter({
@@ -37,7 +38,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
             <body className="min-h-screen bg-background font-sans text-foreground antialiased">
                 <NextIntlClientProvider locale={locale} messages={messages}>
-                    {children}
+                    <SessionProvider>{children}</SessionProvider>
                 </NextIntlClientProvider>
                 {/* Toast surface — sonner replaces the genspark Toast.tsx. Theme
                     pinned to dark since the app is dark-only for now; align

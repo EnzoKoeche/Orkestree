@@ -34,5 +34,23 @@
         "passwordLabel": "Senha",
         "signInError": "E-mail ou senha incorretos. Tente novamente.",
         "sessionExpired": "Sua sessão expirou. Entre novamente."
+    },
+    "signIn": {
+        "title": "Entrar",
+        "subtitle": "Acesse sua conta para gerenciar sua operação.",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "voce@empresa.com.br",
+        "passwordLabel": "Senha",
+        "submit": "Entrar",
+        "submitting": "Entrando…",
+        "errors": {
+            "invalidCredentials": "E-mail ou senha incorretos. Tente novamente.",
+            "serverError": "Algo deu errado. Tente novamente em instantes.",
+            "networkError": "Sem conexão. Verifique sua internet.",
+            "tooManyAttempts": "Muitas tentativas. Aguarde alguns segundos e tente novamente.",
+            "emailRequired": "Informe seu e-mail.",
+            "emailInvalid": "E-mail inválido.",
+            "passwordRequired": "Informe sua senha."
+        }
     }
 }

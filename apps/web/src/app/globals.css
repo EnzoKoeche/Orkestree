@@ -37,7 +37,16 @@
     .dark {
         --background: 0 0% 3.9%;
         --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
+        /*
+         * --card is bumped one notch above --background (3.9% → 5.5%) so
+         * surfaces marked `bg-card` (sidebar, popovers, future raised
+         * elements) read as "elevated chrome" without resorting to a
+         * saturated colour. The 1.6 percentage-point delta is below
+         * conscious recognition but above noise on calibrated displays —
+         * exactly the "subtle stratification" Linear/Vercel use to
+         * separate persistent navigation from page content.
+         */
+        --card: 0 0% 5.5%;
         --card-foreground: 0 0% 98%;
         --popover: 0 0% 3.9%;
         --popover-foreground: 0 0% 98%;

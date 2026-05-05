@@ -1,0 +1,38 @@
+{
+    "common": {
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "delete": "Excluir",
+        "edit": "Editar",
+        "create": "Criar",
+        "loading": "Carregando…",
+        "retry": "Tentar novamente",
+        "back": "Voltar"
+    },
+    "nav": {
+        "requests": "Pedidos",
+        "clients": "Clientes",
+        "proposals": "Propostas",
+        "settings": "Configurações"
+    },
+    "header": {
+        "workspaceLabel": "Workspace",
+        "userMenu": {
+            "signOut": "Sair"
+        }
+    },
+    "empty": {
+        "dashboard": {
+            "title": "Sua operação começa aqui",
+            "description": "Quando um cliente solicitar um serviço, ele aparece aqui como um pedido novo. Nenhuma ação necessária por enquanto."
+        }
+    },
+    "auth": {
+        "signIn": "Entrar",
+        "signOut": "Sair",
+        "emailLabel": "E-mail",
+        "passwordLabel": "Senha",
+        "signInError": "E-mail ou senha incorretos. Tente novamente.",
+        "sessionExpired": "Sua sessão expirou. Entre novamente."
+    }
+}

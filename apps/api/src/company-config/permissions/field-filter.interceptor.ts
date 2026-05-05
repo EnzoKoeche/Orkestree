@@ -54,6 +54,22 @@ export class FieldFilterInterceptor implements NestInterceptor {
         }
 
         if (typeof data === 'object') {
+            // Treat non-plain objects as leaf values. Class instances such as
+            // Prisma.Decimal, Date, Buffer, and BigInt boxes have own
+            // `constructor` properties that are functions; iterating them with
+            // Object.entries would (a) trip the registry lookup on
+            // `constructor`, which falls through Object.prototype and returns
+            // the Object class function — passing that as `field` to
+            // PermissionResolverService.canSeeField crashes Prisma at the
+            // findUnique call; and (b) corrupt the value when re-spread into
+            // a plain `{}` below — Decimal would lose its `toJSON` and ship
+            // as `{s, e, d}` in the JSON response instead of "100.50".
+            // Plain objects produced by Prisma selects have prototype ===
+            // Object.prototype; nullable plain objects (Object.create(null))
+            // have prototype === null and are also safe to iterate.
+            const proto = Object.getPrototypeOf(data);
+            if (proto !== Object.prototype && proto !== null) return data;
+
             const result: Record<string, unknown> = {};
             const entries = Object.entries(data as Record<string, unknown>);
 

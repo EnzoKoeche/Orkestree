@@ -69,6 +69,86 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 - Backend é source of truth pra totais e autorização. UI é convenience.
 - Edição de proposta só em DRAFT (espelho do backend).
 - Estados: loading / empty / error explícitos em listas e detalhes.
+- Stack: Next.js 14 App Router + Tailwind + shadcn/ui (style: New York, baseColor: neutral) + lucide-react + react-hook-form + zod + sonner + next-intl.
+- **Indigo (`hsl(239 84% 67%)`) é override APENAS em `--primary` e `--ring`.** Resto da paleta neutral. Indigo aparece em: Logo (ponto), botão `variant="default"`, focus rings. Em qualquer outro lugar é violação.
+- Active nav state: 3 sinais empilhados (`bg-secondary` + `text-foreground` + `font-medium`). NUNCA strip indigo lateral, NUNCA acento de cor.
+- Inputs `h-10 text-base` (16 px) — text-base é obrigatório pra evitar iOS Safari auto-zoom no focus.
+- Cookie de sessão (`orkestree_session`) é pra middleware ler. localStorage (`orkestree.session.v1`) é pra SessionProvider hidratar. Active company é separado (`orkestree.active_company.v1`).
+
+## Princípios de Frontend Design (10 princípios)
+
+Aplicados em toda UI desde Frontend Semana 1. Antes de criar/editar componente UI: revisar quais aplicam, materializar conscientemente.
+
+1. **Intencionalidade > genericidade.** Nenhuma decisão visual por default. Todo padding, tamanho de fonte, escolha de componente é justificado. Padrões shadcn são ponto de partida, não destino.
+2. **Hierarquia visual clara.** Primário, secundário, terciário em cada tela via tamanho, peso, cor, espaçamento. Operador deve saber em <2 s qual ação importa mais.
+3. **Densidade intencional.** Linear é denso (dev), Notion é espaçoso (lifestyle), Orkestree é meio-termo. Listas ~52-56 px row height, cards p-6 a p-8, nav h-9.
+4. **Tipografia com propósito.** Inter via `next/font/google`. Body 14 px (text-sm), inputs 16 px (text-base — anti-zoom), labels 14 px medium, títulos 24-32 px semibold, números em tabelas tabular-nums. Pesos 400/500/600. NUNCA 700 em texto longo. NUNCA italic em UI.
+5. **Cor com restrição.** Neutros dominam (95% da tela). Indigo é EVENTO (botão Entrar, focus ring), não decoração. Status colors (red/amber/emerald) são raros e contextuais.
+6. **Espaçamento rítmico.** Múltiplos de 4 px (4/8/12/16/24/32/48). Espaçamento entre seções > entre items > entre linhas. White space é design.
+7. **Animações invisíveis.** 150 ms ease-out padrão. Hover/focus/active subtle. NUNCA bounce, spring, dramatic transitions. Loading: skeleton > spinner pra page-level; spinner inline pequeno OK pra status.
+8. **Acessibilidade como linha de base.** Contraste WCAG AA mínimo. Focus visível (`focus-visible:ring-2`). aria-labels em ícones standalone. role/aria-live apropriados em alert/status. Keyboard nav funcional.
+9. **Microcopy como UX.** Linguagem de negócio, NÃO técnica. Erros humanos. Empty states explicativos. Botões com verbo de ação ("Criar pedido", não "Submeter"). Ver tabela de convenções abaixo.
+10. **Logo como marca.** Distintivo, reconhecível, escalável. Storyline visual (centro orquestrador). Funcional em mono (1 cor) sem perder identidade.
+
+## Microcopy PT-BR convenções
+
+Linguagem do **operador leigo** (dono de empresa de serviços, não dev, não PM técnico). Mapeamento técnico → humano:
+
+| ❌ Técnico | ✅ Humano |
+|---|---|
+| ServiceRequest | Pedido / Solicitação |
+| ServiceType | Tipo de serviço |
+| Workflow | Fluxo de trabalho |
+| Stage / Stage transition | Etapa / Mudar etapa |
+| Proposal DRAFT | Proposta em rascunho |
+| Proposal SENT | Proposta enviada |
+| Proposal APPROVED | Proposta aprovada |
+| Proposal REJECTED | Proposta recusada |
+| Membership | Acesso à empresa |
+| Tenant / CompanyMembership | Empresa / Membro |
+| Field validation failed | Verifique os campos abaixo |
+| 401 Unauthorized | Sua sessão expirou. Entre novamente. |
+| 403 Forbidden | Você não tem permissão para essa ação. |
+| 404 Not Found | Não encontramos o que você procura. |
+| 409 Conflict | Esse item já foi alterado por outra pessoa. |
+| 429 Too Many Requests | Muitas tentativas. Aguarde alguns segundos e tente novamente. |
+| 500 Internal Server Error | Algo deu errado. Tente novamente em instantes. |
+| Network error | Sem conexão. Verifique sua internet. |
+| TaskAssignment | Atribuição |
+| RolePermission | Permissão da função |
+
+**Erros remotos** (HTTP) → toast via sonner. **Erros de validação** (zod) → inline abaixo do input com `role="alert"`. **Sucesso de login** NÃO usa toast (B2B premium não celebra). **Logout** sem confirm dialog (operador clicou intencionalmente).
+
+## Antes de criar componente UI — checklist
+
+Aplicar antes de codar QUALQUER componente novo (página, modal, form, lista). Se a resposta a algum item for genérica, parar e refinar.
+
+1. **Quais dos 10 princípios se aplicam?** Liste explicitamente os 3-5 mais relevantes pro componente.
+2. **Como esses princípios se materializam em código?** Tamanhos exatos, classes Tailwind, composição shadcn, branches de render. Nada genérico.
+3. **Qual a microcopy PT?** Toda string visível registrada em `messages/pt.json`. Linguagem de negócio. Erros amigáveis. Ver tabela acima.
+4. **Reportar ANTES de codar.** Aguardar OK do usuário no plano antes de gerar arquivo. Se voltar com refinement, aplicar antes de codar.
+
+Estabelecido em sessão 2026-05-05 (Frontend Semana 1) após auditoria de Fase 3 que revelou 4 violações em código já commitado (corrigidas via fixup). Esse processo evita re-trabalho.
+
+## Visão consolidada do produto
+
+Para qualquer decisão de produto / posicionamento / fasing, a fonte de verdade é:
+
+- **Notion** (ativo, sempre atualizado): página "🎯 Visão Consolidada do Orkestree (2026-05-05)" id `358b731e-1815-8196-bc62-fd7cef4fe111`.
+- **Obsidian vault** (snapshot offline): `<vault>/01-visao-produto.md`.
+- **Plano de captação:** Notion "💼 Plano de Captação — Network da Mãe" id `358b731e-1815-81fb-94e1-c849b62a190d` + `<vault>/02-captacao-investidores.md`.
+
+Resumo do que é decidido e estável:
+- 3 personas: dono empresa cliente / operador (foco MVP visual) / cliente final.
+- 4 tiers de plano (Free / Starter / Pro / Enterprise).
+- Marketplace + score mútuo + chat privado **em V1** (não posterga).
+- IA em V1.5 (BYOK), Google Calendar V2.
+- Configurabilidade Versão A (templates fixos por vertical, não builder visual).
+- Verificação de documentos por vertical (CNPJ + ANVISA / CREA / alvará conforme aplicável).
+- Cliente piloto: vertical impressão 3D hospitalar.
+- Reserva 6-8 meses. Foco abandona PIBEP. Mentoria-first antes de captar.
+
+Antes de propor arquitetura ou feature que toque qualquer um desses temas: ler a fonte de verdade do Notion. Decisões anteriores conflitantes foram substituídas em 2026-05-05.
 
 ## Gotchas (erros que já aconteceram nesta base)
 

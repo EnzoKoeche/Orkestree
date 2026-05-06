@@ -10,6 +10,7 @@
         "back": "Voltar"
     },
     "nav": {
+        "home": "Início",
         "requests": "Pedidos",
         "clients": "Clientes",
         "proposals": "Propostas",

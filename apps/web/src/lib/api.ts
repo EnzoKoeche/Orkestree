@@ -1,4 +1,5 @@
 import type {
+    AvailableTransition,
     ClientListItem,
     CreateServiceRequestPayload,
     CustomFieldListItem,
@@ -13,6 +14,7 @@ import type {
     ServiceRequestListItem,
     ServiceTypeListItem,
     TaskListItem,
+    TransitionStagePayload,
     User,
 } from '@/types/domain';
 import { request } from './http';
@@ -136,6 +138,42 @@ export const requestsApi = {
     ) {
         return request<ServiceRequestDetail>(
             `/companies/${encodeURIComponent(companyId)}/requests`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /**
+     * Lists the legal stage transitions a request can take from its current
+     * stage. Server-side filtered (toStage active, fromStage matches current).
+     * Returns [] for cancelled requests. Permission gate: REQUEST.EDIT.
+     */
+    getAvailableTransitions(
+        companyId: string,
+        requestId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<AvailableTransition[]>(
+            `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/available-transitions`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    transition(
+        companyId: string,
+        requestId: string,
+        payload: TransitionStagePayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<void>(
+            `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/transition`,
             {
                 method: 'POST',
                 body: payload,

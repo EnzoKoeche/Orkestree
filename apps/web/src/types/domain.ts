@@ -369,3 +369,23 @@ export interface CreateServiceRequestPayload {
     description?: string;
     fieldValues?: SetFieldValueItem[];
 }
+
+// ── Available Transitions (mirror of GET /requests/:id/available-transitions) ─
+//
+// Server-side filtered: only transitions whose toStage is active and whose
+// fromStageId matches the request's currentStage. Cancelled requests get an
+// empty array. requiresApproval is NOT filtered by APPROVE permission — the
+// UI badges it and surfaces a friendly 403 toast on click for users without
+// REQUEST.APPROVE.
+
+export interface AvailableTransition {
+    toStageId: string;
+    toStageName: string;
+    toStageIsFinal: boolean;
+    requiresApproval: boolean;
+}
+
+export interface TransitionStagePayload {
+    toStageId: string;
+    note?: string;
+}

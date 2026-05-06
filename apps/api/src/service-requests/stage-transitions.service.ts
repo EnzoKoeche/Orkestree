@@ -13,6 +13,7 @@ import {
     MembershipStatus,
     PermissionAction,
     Prisma,
+    Role,
 } from '@prisma/client';
 import { ConfigAuditService } from '../company-config/audit/config-audit.service';
 import { PermissionResolverService } from '../company-config/permissions/permission-resolver.service';
@@ -38,6 +39,80 @@ export class StageTransitionsService {
         private readonly auditService: ConfigAuditService,
         private readonly events: EventEmitter2,
     ) { }
+
+    // ── Available Transitions (read) ──────────────────────────────────────────
+
+    /**
+     * Lists the legal stage transitions a request can take from its current
+     * stage, joined to the toStage metadata the UI needs to render the menu
+     * (name, isFinal, sortOrder for ordering, requiresApproval as a UI hint).
+     *
+     * Cancelled requests get an empty array — the UI is expected to gate the
+     * action upstream, but returning [] is honest about there being nothing
+     * to do here.
+     *
+     * Permission: gated at the controller via REQUEST.EDIT, mirroring the POST
+     * /transition endpoint. CLIENTE row-level isolation is enforced here as
+     * defense-in-depth: even if a CLIENTE somehow gained EDIT via override,
+     * they should only see transitions for their own requests. requiresApproval
+     * is NOT filtered by APPROVE permission server-side — the UI badges it and
+     * surfaces a friendly 403 toast on click. Filtering here would require
+     * permission resolver work in the read path; deferred until smoke surfaces
+     * a real need.
+     */
+    async getAvailableTransitions(
+        companyId: string,
+        requestId: string,
+        actorMembership: Pick<CompanyMembership, 'id' | 'role'>,
+    ): Promise<
+        Array<{
+            toStageId: string;
+            toStageName: string;
+            toStageIsFinal: boolean;
+            requiresApproval: boolean;
+        }>
+    > {
+        const where: Prisma.ServiceRequestWhereInput = { id: requestId, companyId };
+        if (actorMembership.role === Role.CLIENTE) {
+            where.createdByMembershipId = actorMembership.id;
+        }
+
+        const request = await this.prisma.serviceRequest.findFirst({
+            where,
+            select: {
+                id: true,
+                currentStageId: true,
+                workflowId: true,
+                isCancelled: true,
+            },
+        });
+        if (!request) throw new NotFoundException('Service request not found.');
+
+        if (request.isCancelled) return [];
+
+        const transitions = await this.prisma.stageTransition.findMany({
+            where: {
+                workflowId: request.workflowId,
+                fromStageId: request.currentStageId,
+                toStage: { isActive: true },
+            },
+            select: {
+                toStageId: true,
+                requiresApproval: true,
+                toStage: {
+                    select: { name: true, isFinal: true, sortOrder: true },
+                },
+            },
+            orderBy: { toStage: { sortOrder: 'asc' } },
+        });
+
+        return transitions.map((t) => ({
+            toStageId: t.toStageId,
+            toStageName: t.toStage.name,
+            toStageIsFinal: t.toStage.isFinal,
+            requiresApproval: t.requiresApproval,
+        }));
+    }
 
     // ── Stage Transition ──────────────────────────────────────────────────────
 

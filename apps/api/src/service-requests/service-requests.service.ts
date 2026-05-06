@@ -410,13 +410,23 @@ export class ServiceRequestsService {
         }
         if (query.isCancelled !== undefined) where.isCancelled = query.isCancelled;
 
-        return this.prisma.serviceRequest.findMany({
-            where,
-            select: LIST_SELECT,
-            orderBy: { number: 'desc' },
-            take: query.limit ?? 50,
-            skip: query.skip ?? 0,
-        });
+        const limit = query.limit ?? 50;
+        const skip = query.skip ?? 0;
+
+        // findMany + count in a single transaction so that pagination math stays
+        // consistent under concurrent writes: page N and total never disagree.
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.serviceRequest.findMany({
+                where,
+                select: LIST_SELECT,
+                orderBy: { number: 'desc' },
+                take: limit,
+                skip,
+            }),
+            this.prisma.serviceRequest.count({ where }),
+        ]);
+
+        return { items, total, limit, skip };
     }
 
     // ── Get ───────────────────────────────────────────────────────────────────

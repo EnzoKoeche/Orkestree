@@ -1,8 +1,12 @@
 import type {
     ListServiceRequestsParams,
+    ListTasksParams,
     MembershipsMeResponse,
     Paginated,
+    RequestFieldValue,
+    ServiceRequestDetail,
     ServiceRequestListItem,
+    TaskListItem,
     User,
 } from '@/types/domain';
 import { request } from './http';
@@ -81,6 +85,62 @@ export const requestsApi = {
                     serviceTypeId: params.serviceTypeId,
                     assignedMembershipId: params.assignedMembershipId,
                     isCancelled: params.isCancelled,
+                    limit: params.limit,
+                    skip: params.skip,
+                },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    get(companyId: string, requestId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<ServiceRequestDetail>(
+            `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /**
+     * Field values are role-aware on the backend (CLIENTE row-level isolation
+     * is enforced by getServiceRequest before the response is built); the
+     * frontend just renders what comes back.
+     */
+    getFieldValues(
+        companyId: string,
+        requestId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<RequestFieldValue[]>(
+            `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/field-values`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+};
+
+// ── Tasks ───────────────────────────────────────────────────────────────────
+
+export const tasksApi = {
+    /** Backend returns a plain array (not Paginated) for tasks list. */
+    list(
+        companyId: string,
+        params: ListTasksParams = {},
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<TaskListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/tasks`,
+            {
+                query: {
+                    requestId: params.requestId,
+                    status: params.status,
+                    priority: params.priority,
+                    assignedMembershipId: params.assignedMembershipId,
                     limit: params.limit,
                     skip: params.skip,
                 },

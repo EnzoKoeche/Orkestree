@@ -145,3 +145,108 @@ export interface ListServiceRequestsParams {
     limit?: number;
     skip?: number;
 }
+
+// ── Service Request detail (mirror of DETAIL_SELECT) ────────────────────────
+//
+// Adds stageHistory and assignments on top of the list shape. stageHistory is
+// ordered ASC (origin → current) so the workflow tab can render a forward
+// timeline; assignments DESC (most recent first). Backend never includes
+// fieldValues here — those land via the dedicated /field-values endpoint
+// because they are role-aware in their own way.
+
+export interface RequestStageHistoryEntry {
+    id: string;
+    /** null on the very first row — that one stamps the request's initial
+     *  placement when it was created (no fromStage exists). */
+    fromStageId: string | null;
+    note: string | null;
+    createdAt: string;
+    toStage: { id: string; code: string; name: string };
+    /** actorMembershipId is NOT NULL in the schema; the actor is always the
+     *  membership that triggered the transition. */
+    actorMembership: MembershipRef;
+}
+
+export interface RequestAssignmentEntry {
+    id: string;
+    createdAt: string;
+    membership: MembershipRef;
+    /** assignedByMembershipId is NOT NULL in the schema. */
+    assignedByMembership: MembershipRef;
+}
+
+export interface ServiceRequestDetail extends ServiceRequestListItem {
+    stageHistory: RequestStageHistoryEntry[];
+    assignments: RequestAssignmentEntry[];
+}
+
+// ── Custom field values (GET /requests/:id/field-values) ─────────────────────
+
+/** Mirrors @prisma/client CustomFieldType. Hand-typed to avoid pulling the
+ *  Prisma client into the web bundle. Validated against schema.prisma. */
+export type CustomFieldType =
+    | 'TEXT'
+    | 'TEXTAREA'
+    | 'NUMBER'
+    | 'DECIMAL'
+    | 'DATE'
+    | 'DATETIME'
+    | 'SELECT'
+    | 'MULTISELECT'
+    | 'BOOLEAN'
+    | 'FILE'
+    | 'PHONE'
+    | 'EMAIL'
+    | 'URL';
+
+/** Wire shape returned by GET /requests/:id/field-values. Backend stores
+ *  values in typed columns (only one is set per row depending on fieldType);
+ *  the frontend reads the matching one based on customField.type. */
+export interface RequestFieldValue {
+    id: string;
+    customFieldId: string;
+    valueText: string | null;
+    valueNumber: string | null;
+    valueBoolean: boolean | null;
+    valueDate: string | null;
+    valueMulti: string[];
+    customField: {
+        id: string;
+        code: string;
+        label: string;
+        type: CustomFieldType;
+    };
+}
+
+// ── Tasks (mirror of GET /companies/:companyId/tasks?requestId=…) ────────────
+//
+// Endpoint returns a plain array (no pagination wrapper) — Tasks are scoped to
+// a single request in this view, so the count is small.
+
+export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface TaskListItem {
+    id: string;
+    number: number;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    dueAt: string | null;
+    completedAt: string | null;
+    cancelledAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    request: { id: string; number: number; title: string };
+    assignedMembership: MembershipRef | null;
+    createdByMembership: MembershipRef;
+}
+
+export interface ListTasksParams {
+    requestId?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    assignedMembershipId?: string;
+    limit?: number;
+    skip?: number;
+}

@@ -100,7 +100,67 @@
             }
         },
         "noClient": "Sem cliente",
-        "noAssignee": "Sem responsável"
+        "noAssignee": "Sem responsável",
+        "detail": {
+            "back": "Voltar para pedidos",
+            "loading": "Carregando pedido…",
+            "errorTitle": "Não foi possível carregar o pedido",
+            "errorFallback": "Tente novamente em instantes.",
+            "notFoundTitle": "Pedido não encontrado",
+            "notFoundDescription": "Esse pedido pode ter sido removido ou não está disponível para o seu acesso.",
+            "tabs": {
+                "details": "Detalhes",
+                "workflow": "Fluxo",
+                "tasks": "Tarefas",
+                "history": "Histórico"
+            },
+            "header": {
+                "type": "Tipo",
+                "client": "Cliente",
+                "assignee": "Responsável",
+                "createdBy": "Criado por",
+                "createdAt": "Criado em"
+            },
+            "details": {
+                "descriptionTitle": "Descrição",
+                "noDescription": "Sem descrição.",
+                "fieldsTitle": "Campos personalizados",
+                "noFields": "Nenhum campo personalizado para este tipo de pedido.",
+                "noValue": "—"
+            },
+            "workflow": {
+                "currentStageTitle": "Etapa atual",
+                "finalStage": "Etapa final",
+                "historyTitle": "Por onde passou",
+                "createdInStage": "Criado em {stage}",
+                "movedToStage": "Movido para {stage}",
+                "noHistory": "Nenhuma movimentação ainda."
+            },
+            "tasks": {
+                "empty": "Nenhuma tarefa vinculada a este pedido.",
+                "columns": {
+                    "number": "Tarefa",
+                    "title": "Título",
+                    "status": "Status",
+                    "assignee": "Responsável",
+                    "createdAt": "Criada em"
+                },
+                "status": {
+                    "OPEN": "Aberta",
+                    "IN_PROGRESS": "Em andamento",
+                    "DONE": "Concluída",
+                    "CANCELLED": "Cancelada"
+                },
+                "noAssignee": "Sem responsável"
+            },
+            "history": {
+                "empty": "Sem histórico ainda.",
+                "stageInitial": "Pedido criado em {to}",
+                "stageMoved": "Movido de {from} para {to}",
+                "assigned": "{member} foi atribuído",
+                "by": "por {actor}"
+            }
+        }
     },
     "pagination": {
         "previous": "Anterior",

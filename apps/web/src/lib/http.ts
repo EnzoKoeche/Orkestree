@@ -15,6 +15,7 @@ import type { Session } from '@/types/domain';
 const SESSION_KEY = 'orkestree.session.v1';
 const SESSION_COOKIE = 'orkestree_session';
 const ACTIVE_COMPANY_KEY = 'orkestree.active_company.v1';
+const ACTIVE_COMPANY_COOKIE = 'orkestree_active_company';
 
 // Cookie max-age aligned to the API's JWT_EXPIRES_IN (7d) — keeps the
 // middleware gate consistent with what the server will actually accept.
@@ -73,6 +74,11 @@ export function clearStoredSession(): void {
 // refresh never invalidates the JWT shape. Only the company id is stored
 // here; the full Membership object is hydrated on every load via
 // /memberships/me, then matched to this id.
+//
+// Dual-write: localStorage for client SessionProvider hydration,
+// orkestree_active_company cookie for Server Components (which can't read
+// localStorage). Server Components pull the id via lib/server-session.ts
+// and pair it with the JWT cookie to scope tenant-aware fetches.
 
 export function readStoredActiveCompanyId(): string | null {
     if (typeof window === 'undefined') return null;
@@ -87,11 +93,18 @@ export function readStoredActiveCompanyId(): string | null {
 export function writeStoredActiveCompanyId(companyId: string): void {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(ACTIVE_COMPANY_KEY, companyId);
+    document.cookie = [
+        `${ACTIVE_COMPANY_COOKIE}=${encodeURIComponent(companyId)}`,
+        'path=/',
+        'SameSite=Lax',
+        `max-age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
+    ].join('; ');
 }
 
 export function clearStoredActiveCompanyId(): void {
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(ACTIVE_COMPANY_KEY);
+    document.cookie = `${ACTIVE_COMPANY_COOKIE}=; path=/; max-age=0`;
 }
 
 // ── Errors ──────────────────────────────────────────────────────────────────

@@ -24,6 +24,17 @@ import { cookies } from 'next/headers';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SESSION_COOKIE = 'orkestree_session';
+const ACTIVE_COMPANY_COOKIE = 'orkestree_active_company';
+
+function readCookie(name: string): string | null {
+    const raw = cookies().get(name)?.value;
+    if (!raw) return null;
+    try {
+        return decodeURIComponent(raw);
+    } catch {
+        return raw;
+    }
+}
 
 /**
  * Returns the JWT from the session cookie, or null if absent. Safe to call
@@ -32,15 +43,28 @@ const SESSION_COOKIE = 'orkestree_session';
  * server-only and bundling will fail loudly if you try.
  */
 export function getServerToken(): string | null {
-    const raw = cookies().get(SESSION_COOKIE)?.value;
-    if (!raw) return null;
-    try {
-        // Cookie value is URI-encoded at write time (see lib/http.ts). For
-        // JWTs the encode is a no-op — the alphabet is base64url-safe — but
-        // decoding defensively means a future encoded payload doesn't break
-        // silently here.
-        return decodeURIComponent(raw);
-    } catch {
-        return raw;
-    }
+    return readCookie(SESSION_COOKIE);
+}
+
+/**
+ * Returns the active workspace id the operator picked client-side. The
+ * cookie is dual-written by lib/http.writeStoredActiveCompanyId — both
+ * sides of the membership swap (localStorage for SessionProvider hydration,
+ * cookie for Server Components like this page). Returns null when no
+ * workspace has been selected yet (first load before /memberships/me
+ * resolves).
+ */
+export function getServerActiveCompanyId(): string | null {
+    return readCookie(ACTIVE_COMPANY_COOKIE);
+}
+
+/** Convenience pair for pages that need both at once. */
+export function getServerSession(): {
+    token: string | null;
+    activeCompanyId: string | null;
+} {
+    return {
+        token: getServerToken(),
+        activeCompanyId: getServerActiveCompanyId(),
+    };
 }

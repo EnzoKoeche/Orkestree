@@ -128,6 +128,10 @@ export interface ServiceRequestListItem {
     cancellationReason: string | null;
     createdAt: string;
     updatedAt: string;
+    /** FK to the workflow this request belongs to — fixed at creation time.
+     *  Used by the detail page to load valid stage transitions without an
+     *  extra serviceType→workflow lookup hop. */
+    workflowId: string;
     serviceType: ServiceRequestType;
     currentStage: ServiceRequestStage;
     client: ServiceRequestClient | null;

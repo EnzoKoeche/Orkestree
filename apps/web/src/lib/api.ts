@@ -1,4 +1,9 @@
 import type {
+    ClientListItem,
+    CreateServiceRequestPayload,
+    CustomFieldListItem,
+    ListClientsParams,
+    ListCustomFieldsParams,
     ListServiceRequestsParams,
     ListTasksParams,
     MembershipsMeResponse,
@@ -6,6 +11,7 @@ import type {
     RequestFieldValue,
     ServiceRequestDetail,
     ServiceRequestListItem,
+    ServiceTypeListItem,
     TaskListItem,
     User,
 } from '@/types/domain';
@@ -117,6 +123,94 @@ export const requestsApi = {
         return request<RequestFieldValue[]>(
             `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/field-values`,
             {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateServiceRequestPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ServiceRequestDetail>(
+            `/companies/${encodeURIComponent(companyId)}/requests`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+};
+
+// ── Clients ─────────────────────────────────────────────────────────────────
+
+export const clientsApi = {
+    /** Plain array response (no pagination wrapper). search is server-side
+     *  case-insensitive over name + taxId — see clients.service.ts:490. */
+    list(
+        companyId: string,
+        params: ListClientsParams = {},
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/clients`,
+            {
+                query: {
+                    type: params.type,
+                    isActive: params.isActive,
+                    search: params.search,
+                    limit: params.limit,
+                    skip: params.skip,
+                },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+};
+
+// ── Service Types ───────────────────────────────────────────────────────────
+
+export const serviceTypesApi = {
+    list(companyId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<ServiceTypeListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/config/service-types`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+};
+
+// ── Custom Fields ───────────────────────────────────────────────────────────
+
+export const customFieldsApi = {
+    /**
+     * Backend filter quirk: passing serviceTypeId narrows to ONLY service-
+     * specific fields and excludes globals (serviceTypeId IS NULL). To
+     * collect every applicable field for a service type, fetch with
+     * target=REQUEST + isActive=true (no serviceTypeId), then filter
+     * client-side: f.serviceType === null OR f.serviceType.id === selectedId.
+     * The frontend already has serviceType inline in the response.
+     */
+    list(
+        companyId: string,
+        params: ListCustomFieldsParams = {},
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<CustomFieldListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields`,
+            {
+                query: {
+                    target: params.target,
+                    serviceTypeId: params.serviceTypeId,
+                    isActive: params.isActive,
+                },
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

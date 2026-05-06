@@ -307,3 +307,65 @@ export interface ListTasksParams {
     limit?: number;
     skip?: number;
 }
+
+// ── Clients (mirror of GET /companies/:companyId/clients) ───────────────────
+//
+// Plain array response (no pagination wrapper). search query is server-side
+// case-insensitive over name + taxId — used by the request creation modal's
+// client picker via debounced fetches.
+
+export interface ClientListItem {
+    id: string;
+    /** Per-tenant sequential identifier — display as "C-12". */
+    number: number;
+    type: ClientType;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    taxId: string | null;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ListClientsParams {
+    type?: ClientType;
+    isActive?: boolean;
+    search?: string;
+    limit?: number;
+    skip?: number;
+}
+
+// ── Service Types (mirror of GET /companies/:companyId/config/service-types) ─
+//
+// Returns full LIST_SELECT projection — workflowId is exposed because some
+// service types pin a specific workflow, others fall back to the company
+// default (workflowId = null on the row).
+
+export interface ServiceTypeListItem {
+    id: string;
+    code: string;
+    name: string;
+    workflowId: string | null;
+    isActive: boolean;
+}
+
+// ── Create Service Request payload ──────────────────────────────────────────
+
+export interface SetFieldValueItem {
+    customFieldId: string;
+    valueText?: string | null;
+    valueNumber?: number | null;
+    valueBoolean?: boolean | null;
+    /** ISO 8601 string (DATE → YYYY-MM-DD, DATETIME → full ISO). */
+    valueDate?: string | null;
+    valueMulti?: string[];
+}
+
+export interface CreateServiceRequestPayload {
+    serviceTypeId: string;
+    clientId?: string;
+    title: string;
+    description?: string;
+    fieldValues?: SetFieldValueItem[];
+}

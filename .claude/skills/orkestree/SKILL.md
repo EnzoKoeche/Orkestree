@@ -75,6 +75,35 @@ SaaS multi-tenant para empresas de serviço. Stack: NestJS modular monolith + Pr
 - Inputs `h-10 text-base` (16 px) — text-base é obrigatório pra evitar iOS Safari auto-zoom no focus.
 - Cookie de sessão (`orkestree_session`) é pra middleware ler. localStorage (`orkestree.session.v1`) é pra SessionProvider hidratar. Active company é separado (`orkestree.active_company.v1`).
 
+## Server vs Client Components — constraint
+
+Server Components não podem receber event handlers como props (`onClick`, `onChange`, etc.). Funções não serializam pra HTML — Next aborta o render com `Error: Event handlers cannot be passed to Client Component props`.
+
+**Quando precisar de "fake link" preparado pra futuro** (link semântico mas comportamento desativado), em Server Component:
+
+❌ NÃO faz:
+```tsx
+<a href="/path" onClick={(e) => e.preventDefault()} aria-disabled>
+  ...
+</a>
+```
+
+✅ FAZ:
+```tsx
+<div role="link" aria-disabled="true" tabIndex={0} className="...">
+  ...
+</div>
+```
+
+Mantém a11y via ARIA (screen reader anuncia "link, desabilitado"), preserva keyboard navigation (`tabIndex={0}`), permite hover/focus visual via CSS. Quando o link real for ativado, troca por `<Link href="/path">` do `next/link` — nesse ponto o constraint dissolve porque `next/link` já lida com a navegação no client.
+
+**Outras opções pra interactivity em Server Component:**
+- **Server Actions** — `<form action={serverAction}>` pra submits, NÃO `onClick`.
+- **Client island** — extrai só a parte interativa pra um componente `'use client'` separado (ex.: `DashboardGreeting` em `apps/web/src/app/(app)/_components/`).
+- **CSS-only** — cursor, hover, focus, transitions sem handler nenhum.
+
+**Origem:** Sessão 9.5 (2026-05-06), bug capturado no smoke do dashboard real. Fix em commit `76fc173` (PR #26).
+
 ## Princípios de Frontend Design (10 princípios)
 
 Aplicados em toda UI desde Frontend Semana 1. Antes de criar/editar componente UI: revisar quais aplicam, materializar conscientemente.

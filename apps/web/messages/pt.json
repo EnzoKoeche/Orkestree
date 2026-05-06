@@ -101,6 +101,14 @@
         },
         "noClient": "Sem cliente",
         "noAssignee": "Sem responsável",
+        "transition": {
+            "trigger": "Mover para…",
+            "moving": "Movendo…",
+            "requiresApproval": "Requer aprovação",
+            "success": "Pedido movido para {stage}.",
+            "error": "Não foi possível mover o pedido.",
+            "approvalRequired": "Você não tem permissão para aprovar essa transição."
+        },
         "create": {
             "trigger": "Novo pedido",
             "title": "Novo pedido",

@@ -8,6 +8,7 @@ import { requestsApi, tasksApi } from '@/lib/api';
 import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import type {
+    AvailableTransition,
     RequestFieldValue,
     ServiceRequestDetail,
     TaskListItem,
@@ -77,9 +78,10 @@ export default async function RequestDetailPage({
     let detail: ServiceRequestDetail;
     let fieldValues: RequestFieldValue[];
     let tasks: TaskListItem[];
+    let availableTransitions: AvailableTransition[];
 
     try {
-        [detail, fieldValues, tasks] = await Promise.all([
+        [detail, fieldValues, tasks, availableTransitions] = await Promise.all([
             requestsApi.get(activeCompanyId, params.id, { tokenOverride: token }),
             requestsApi.getFieldValues(activeCompanyId, params.id, { tokenOverride: token }),
             tasksApi
@@ -89,6 +91,15 @@ export default async function RequestDetailPage({
                     { tokenOverride: token },
                 )
                 .catch(() => [] as TaskListItem[]),
+            // Best-effort: viewers without REQUEST.EDIT (FINANCEIRO, CLIENTE)
+            // get a 403 here. The TransitionMenu's role gate hides itself for
+            // those roles anyway, so an empty array is the right fallback —
+            // never surfaces as an error to the user.
+            requestsApi
+                .getAvailableTransitions(activeCompanyId, params.id, {
+                    tokenOverride: token,
+                })
+                .catch(() => [] as AvailableTransition[]),
         ]);
     } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
@@ -116,7 +127,10 @@ export default async function RequestDetailPage({
             <BackLink label={t('back')} />
 
             <div className="mt-4">
-                <RequestDetailHeader request={detail} />
+                <RequestDetailHeader
+                    request={detail}
+                    availableTransitions={availableTransitions}
+                />
             </div>
 
             <div className="mt-6">

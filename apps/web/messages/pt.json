@@ -29,6 +29,24 @@
             "description": "Quando um cliente solicitar um serviço, ele aparece aqui como um pedido novo. Nenhuma ação necessária por enquanto."
         }
     },
+    "placeholder": {
+        "requests": {
+            "title": "Pedidos",
+            "description": "Aqui você vai gerenciar todos os pedidos da sua empresa. Em construção."
+        },
+        "clients": {
+            "title": "Clientes",
+            "description": "Cadastro completo dos seus clientes. Em desenvolvimento."
+        },
+        "proposals": {
+            "title": "Propostas",
+            "description": "Crie, edite e acompanhe propostas comerciais. Disponível em breve."
+        },
+        "settings": {
+            "title": "Configurações",
+            "description": "Personalize fluxos de trabalho, campos personalizados e permissões da sua empresa. Em construção."
+        }
+    },
     "auth": {
         "signIn": "Entrar",
         "signOut": "Sair",

@@ -203,6 +203,59 @@ export type CustomFieldType =
     | 'EMAIL'
     | 'URL';
 
+/** Mirrors @prisma/client CustomFieldTarget — full enum, even though the
+ *  current frontend only consumes REQUEST. Keeping the type honest about
+ *  the domain avoids silent narrowing if a future surface starts reading
+ *  CLIENT/PROPOSAL/SERVICE_ORDER/CONTACT custom fields. */
+export type CustomFieldTarget =
+    | 'REQUEST'
+    | 'CLIENT'
+    | 'PROPOSAL'
+    | 'SERVICE_ORDER'
+    | 'CONTACT';
+
+/** Option row for SELECT / MULTISELECT custom fields. value is the wire
+ *  identifier persisted in valueText / valueMulti; label is what the user
+ *  sees. */
+export interface CustomFieldOption {
+    id: string;
+    label: string;
+    value: string;
+    sortOrder: number;
+}
+
+/** Wire shape returned by GET /companies/:companyId/config/custom-fields.
+ *  options is always present (Commit Ab) — empty array for non-option field
+ *  types. serviceType is null when the field applies globally to its target
+ *  (e.g. all REQUESTs regardless of serviceType). */
+export interface CustomFieldListItem {
+    id: string;
+    code: string;
+    label: string;
+    target: CustomFieldTarget;
+    type: CustomFieldType;
+    isRequired: boolean;
+    isActive: boolean;
+    sortOrder: number;
+    placeholder: string | null;
+    helpText: string | null;
+    createdAt: string;
+    updatedAt: string;
+    serviceType: {
+        id: string;
+        code: string;
+        name: string;
+        isActive: boolean;
+    } | null;
+    options: CustomFieldOption[];
+}
+
+export interface ListCustomFieldsParams {
+    target?: CustomFieldTarget;
+    serviceTypeId?: string;
+    isActive?: boolean;
+}
+
 /** Wire shape returned by GET /requests/:id/field-values. Backend stores
  *  values in typed columns (only one is set per row depending on fieldType);
  *  the frontend reads the matching one based on customField.type. */

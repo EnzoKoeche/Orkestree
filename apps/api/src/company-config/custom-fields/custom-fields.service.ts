@@ -56,8 +56,23 @@ const LIST_SELECT = {
     serviceType: {
         select: { id: true, code: true, name: true, isActive: true },
     },
+    // Options inline on the list response so the request creation modal can
+    // render SELECT and MULTISELECT inputs without an N+1 detail fetch per
+    // field. id/label/value/sortOrder is form metadata, not authorization
+    // data — equivalent to what any user with COMPANY_CONFIG.VIEW already
+    // sees in the field editor. Empty array for non-option field types.
+    options: {
+        select: OPTION_SELECT,
+        orderBy: { sortOrder: 'asc' as const },
+    },
 } satisfies Prisma.CustomFieldSelect;
 
+// DETAIL_SELECT keeps its explicit `options` even though LIST_SELECT now
+// covers it via spread — same shape today, but DETAIL_SELECT remains the
+// canonical "this surface owns options as part of its contract" anchor.
+// Removing it here would couple detail callers to LIST_SELECT's internal
+// composition, which we may want to diverge later (e.g., conditional
+// projections, per-role filtering).
 const DETAIL_SELECT = {
     ...LIST_SELECT,
     options: {

@@ -1,4 +1,10 @@
-import type { MembershipsMeResponse, User } from '@/types/domain';
+import type {
+    ListServiceRequestsParams,
+    MembershipsMeResponse,
+    Paginated,
+    ServiceRequestListItem,
+    User,
+} from '@/types/domain';
 import { request } from './http';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,5 +50,43 @@ export const membershipsApi = {
      */
     me(signal?: AbortSignal) {
         return request<MembershipsMeResponse>('/memberships/me', { signal });
+    },
+};
+
+// ── Service Requests ────────────────────────────────────────────────────────
+//
+// `tokenOverride` is the seam that lets Server Components fetch with the
+// session JWT pulled from cookies() (via lib/server-session.getServerToken).
+// Client-side callers omit it and fall back to the localStorage-backed
+// session in lib/http.ts. Same client surface, two transport contexts.
+
+export interface ListServiceRequestsOptions {
+    /** Server Components pass the JWT explicitly here (lib/http can't read
+     *  localStorage server-side). */
+    tokenOverride?: string;
+    signal?: AbortSignal;
+}
+
+export const requestsApi = {
+    list(
+        companyId: string,
+        params: ListServiceRequestsParams = {},
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<Paginated<ServiceRequestListItem>>(
+            `/companies/${encodeURIComponent(companyId)}/requests`,
+            {
+                query: {
+                    stageId: params.stageId,
+                    serviceTypeId: params.serviceTypeId,
+                    assignedMembershipId: params.assignedMembershipId,
+                    isCancelled: params.isCancelled,
+                    limit: params.limit,
+                    skip: params.skip,
+                },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
     },
 };

@@ -47,6 +47,54 @@
             "description": "Personalize fluxos de trabalho, campos personalizados e permissões da sua empresa. Em construção."
         }
     },
+    "requests": {
+        "title": "Pedidos",
+        "subtitle": "Acompanhe todas as solicitações da sua empresa.",
+        "newRequest": "Novo pedido",
+        "columns": {
+            "number": "Pedido",
+            "title": "Título",
+            "client": "Cliente",
+            "stage": "Etapa",
+            "status": "Status",
+            "assignee": "Responsável",
+            "createdAt": "Criado em"
+        },
+        "status": {
+            "in_progress": "Em andamento",
+            "completed": "Concluído",
+            "cancelled": "Cancelado"
+        },
+        "filters": {
+            "all": "Todos",
+            "stage": "Etapa",
+            "serviceType": "Tipo de serviço",
+            "assignee": "Responsável",
+            "isCancelled": "Situação",
+            "active": "Ativos",
+            "cancelled": "Cancelados",
+            "clear": "Limpar filtros",
+            "unassigned": "Sem responsável"
+        },
+        "empty": {
+            "noRequests": {
+                "title": "Nenhum pedido por aqui ainda",
+                "description": "Quando um cliente solicitar um serviço, ele aparece aqui como um pedido novo."
+            },
+            "noResults": {
+                "title": "Nenhum pedido encontrado",
+                "description": "Tente ajustar os filtros ou limpar a busca para ver mais resultados."
+            }
+        },
+        "noClient": "Sem cliente",
+        "noAssignee": "Sem responsável"
+    },
+    "pagination": {
+        "previous": "Anterior",
+        "next": "Próxima",
+        "showing": "Mostrando {from}–{to} de {total}",
+        "page": "Página {current} de {total}"
+    },
     "auth": {
         "signIn": "Entrar",
         "signOut": "Sair",

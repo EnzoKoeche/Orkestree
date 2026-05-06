@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import {
     createContext,
     useCallback,
@@ -62,6 +63,8 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+    const router = useRouter();
+    const pathname = usePathname();
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -109,6 +112,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 setActiveMembership(next);
                 if (!persistedId || persistedId !== next.company.id) {
                     writeStoredActiveCompanyId(next.company.id);
+                    // First-login deep link or fallback after a deactivated
+                    // membership: the Server Component already rendered with
+                    // either no cookie or the stale id. Refresh so it re-fetches
+                    // with the freshly-written orkestree_active_company cookie.
+                    router.refresh();
                 }
             })
             .catch((err) => {
@@ -128,7 +136,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return () => {
             active = false;
         };
-    }, [session]);
+    }, [session, router]);
 
     const signIn = useCallback((next: Session) => {
         writeStoredSession(next);
@@ -147,10 +155,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         (companyId: string) => {
             const target = memberships.find((m) => m.company.id === companyId);
             if (!target) return;
+            // No-op if the operator picked the workspace they're already in.
+            // Skipping the navigate avoids dropping their current filters when
+            // they re-click the active row in the dropdown.
+            if (activeMembership?.company.id === companyId) return;
             setActiveMembership(target);
             writeStoredActiveCompanyId(companyId);
+            // Drop search params (filters/page belong to the previous tenant —
+            // stage ids, member ids, even row counts won't match the new one)
+            // and trigger a Server Component re-fetch with the new cookie.
+            router.replace(pathname);
+            router.refresh();
         },
-        [memberships],
+        [memberships, activeMembership, router, pathname],
     );
 
     const value = useMemo<SessionContextValue>(

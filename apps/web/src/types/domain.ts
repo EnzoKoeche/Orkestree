@@ -59,3 +59,89 @@ export interface MembershipsMeResponse {
     user: User;
     memberships: Membership[];
 }
+
+// ── Pagination wrapper ──────────────────────────────────────────────────────
+//
+// All list endpoints return this shape. Frontend computes hasMore /
+// currentPage / totalPages from (total, limit, skip) — keeping the wire shape
+// minimal lets us add new derived values without churning the API.
+//
+// Mirrors the backend's `prisma.$transaction([findMany, count])` contract:
+// items and total were captured in the same DB snapshot, so pagination math
+// stays consistent under concurrent writes.
+
+export interface Paginated<T> {
+    items: T[];
+    total: number;
+    limit: number;
+    skip: number;
+}
+
+// ── Service Request (mirror of LIST_SELECT in apps/api/src/service-requests) ──
+
+export type ClientType = 'INDIVIDUAL' | 'BUSINESS';
+
+export interface ServiceRequestStage {
+    id: string;
+    code: string;
+    name: string;
+    /** Hex token (e.g. "#3b82f6") or null. Backend stores brand-tinted hints
+     *  for the Stage column; UI must treat null as "no color provided". */
+    color: string | null;
+    /** True when the stage is terminal in its workflow (success leg). Drives
+     *  the StatusBadge → "Concluído" branch on the list. */
+    isFinal: boolean;
+}
+
+export interface ServiceRequestType {
+    id: string;
+    code: string;
+    name: string;
+}
+
+export interface ServiceRequestClient {
+    id: string;
+    /** Per-tenant sequential identifier (1, 2, …) — display as "C-12". */
+    number: number;
+    name: string;
+    type: ClientType;
+}
+
+/** Membership reference shaped exactly like the API's MEMBERSHIP_USER_SELECT. */
+export interface MembershipRef {
+    id: string;
+    user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        avatarUrl: string | null;
+    };
+}
+
+export interface ServiceRequestListItem {
+    id: string;
+    /** Per-tenant sequential identifier — display as "#1234". */
+    number: number;
+    title: string;
+    description: string | null;
+    isCancelled: boolean;
+    cancellationReason: string | null;
+    createdAt: string;
+    updatedAt: string;
+    serviceType: ServiceRequestType;
+    currentStage: ServiceRequestStage;
+    client: ServiceRequestClient | null;
+    assignedMembership: MembershipRef | null;
+    createdByMembership: MembershipRef | null;
+}
+
+/** Filter shape consumed by GET /companies/:companyId/requests. All optional;
+ *  omitted keys are dropped by the http querystring builder. */
+export interface ListServiceRequestsParams {
+    stageId?: string;
+    serviceTypeId?: string;
+    assignedMembershipId?: string;
+    isCancelled?: boolean;
+    limit?: number;
+    skip?: number;
+}

@@ -1,0 +1,59 @@
+{
+    "common": {
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "delete": "Excluir",
+        "edit": "Editar",
+        "create": "Criar",
+        "loading": "Carregando…",
+        "retry": "Tentar novamente",
+        "back": "Voltar"
+    },
+    "nav": {
+        "requests": "Pedidos",
+        "clients": "Clientes",
+        "proposals": "Propostas",
+        "settings": "Configurações"
+    },
+    "workspace": {
+        "label": "WORKSPACE",
+        "switching": "Trocando…"
+    },
+    "userMenu": {
+        "signOut": "Sair",
+        "switchWorkspace": "Trocar empresa"
+    },
+    "empty": {
+        "dashboard": {
+            "title": "Sua operação começa aqui",
+            "description": "Quando um cliente solicitar um serviço, ele aparece aqui como um pedido novo. Nenhuma ação necessária por enquanto."
+        }
+    },
+    "auth": {
+        "signIn": "Entrar",
+        "signOut": "Sair",
+        "emailLabel": "E-mail",
+        "passwordLabel": "Senha",
+        "signInError": "E-mail ou senha incorretos. Tente novamente.",
+        "sessionExpired": "Sua sessão expirou. Entre novamente.",
+        "restoring": "Restaurando sessão…"
+    },
+    "signIn": {
+        "title": "Entrar",
+        "subtitle": "Acesse sua conta para gerenciar sua operação.",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "voce@empresa.com.br",
+        "passwordLabel": "Senha",
+        "submit": "Entrar",
+        "submitting": "Entrando…",
+        "errors": {
+            "invalidCredentials": "E-mail ou senha incorretos. Tente novamente.",
+            "serverError": "Algo deu errado. Tente novamente em instantes.",
+            "networkError": "Sem conexão. Verifique sua internet.",
+            "tooManyAttempts": "Muitas tentativas. Aguarde alguns segundos e tente novamente.",
+            "emailRequired": "Informe seu e-mail.",
+            "emailInvalid": "E-mail inválido.",
+            "passwordRequired": "Informe sua senha."
+        }
+    }
+}

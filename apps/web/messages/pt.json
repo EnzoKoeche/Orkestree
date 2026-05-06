@@ -29,6 +29,18 @@
             "description": "Quando um cliente solicitar um serviço, ele aparece aqui como um pedido novo. Nenhuma ação necessária por enquanto."
         }
     },
+    "dashboard": {
+        "greeting": "Olá, {firstName}",
+        "greetingFallback": "Olá!",
+        "loading": "Carregando empresa…",
+        "errorTitle": "Não foi possível carregar o resumo",
+        "errorFallback": "Tente novamente em instantes.",
+        "statLabel": "{count, plural, =1 {pedido no total} other {pedidos no total}}",
+        "recentTitle": "Últimos pedidos",
+        "viewAll": "Ver todos os pedidos",
+        "noClient": "Sem cliente",
+        "stage": "Etapa: {name}"
+    },
     "placeholder": {
         "requests": {
             "title": "Pedidos",

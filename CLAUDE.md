@@ -393,7 +393,8 @@ It is an Obsidian vault maintained by Claude. Its purpose: accumulate non-obviou
 **Workflow for every session:**
 
 1. **Before investigating anything**, read at minimum:
-   - `<vault>\index.md` — catalog
+   - `<vault>\00-INDEX.md` — catalog (renamed from `index.md` in 2026-05-05)
+   - `<vault>\01-visao-produto.md` — product strategy snapshot (mirror of the Notion canonical)
    - `<vault>\gotchas.md` — known traps
    - `<vault>\modulos\<module-being-touched>.md` — module-specific knowledge
    - For bug-shaped tasks: grep `<vault>\bugs\` for symptom keywords.
@@ -405,3 +406,56 @@ It is an Obsidian vault maintained by Claude. Its purpose: accumulate non-obviou
    - Drift between this CLAUDE.md and reality → record in `gotchas.md` or relevant module.
 
 **Hard rule:** the vault is the **only** place Claude writes outside this repo. The vault never modifies this repo, except this section. Templates and the maintenance protocol live in `<vault>\CLAUDE.md`.
+
+---
+
+## 16. Working discipline (env vars, branches, UI guardrails, microcopy)
+
+Five process-level rules that every session inherits. None of them are about WHAT to build — they're about HOW to build so this codebase stays maintainable as the team grows past one person.
+
+### 16.1 Env var pattern (estabelecido em PR #16)
+
+- **Bootstrap factories** (`forRoot`, `forRootAsync` no `AppModule`) read `process.env` directly.
+- **Runtime services** (`@Injectable` consumed after bootstrap) use `ConfigService.get()` via DI.
+
+`ConfigModule.forRoot` is the FIRST import of `AppModule`, so `process.env` is populated by the time any later factory runs. `ConfigService` is not always reliably injectable in same-level factories, hence the split. Mixing the two within a single AppModule = inconsistency — pick a side per file.
+
+### 16.2 Branch + PR discipline
+
+- One feature, one branch, one PR. Refactors adjacent to the work go in their own PR.
+- Branch naming: `feat/<area>`, `fix/<area>`, `docs/<area>`, `chore/<area>`.
+- Build clean before every commit (`pnpm --filter @orkestree/api build` and/or `pnpm --filter @orkestree/web build`).
+- Squash merge to `main`. PR title becomes the commit subject; the PR body becomes the commit body.
+- After merge: delete branch (local + remote), pull `main`, rebase any active feature branches.
+- Force-push only with `--force-with-lease`. Never on `main`.
+
+### 16.3 Before creating a UI component — checklist (4 steps)
+
+Established 2026-05-05 after the Fase 3 design audit caught violations in committed code. Apply BEFORE generating any UI component file:
+
+1. **Which of the 10 design principles apply?** Be specific — list the 3-5 that matter most for the component.
+2. **How do those principles materialise in code?** Exact sizes, Tailwind classes, shadcn composition, render branches. Nothing generic.
+3. **What's the PT-BR microcopy?** Every visible string registered in `messages/pt.json`. Business language, not technical.
+4. **Report BEFORE coding.** Wait for user OK on the plan before generating files.
+
+Full principles + microcopy table live in `.claude/skills/orkestree/SKILL.md`. The 10 principles are:
+
+> intencionalidade · hierarquia visual · densidade intencional · tipografia com propósito · cor com restrição · espaçamento rítmico · animações invisíveis · acessibilidade como linha de base · microcopy como UX · logo como marca
+
+### 16.4 Microcopy PT-BR is mandatory
+
+Every user-facing string is PT-BR, in business language, registered in `apps/web/messages/pt.json`. The translation table (technical → human) lives in SKILL.md under "Microcopy PT-BR convenções".
+
+Hard prohibitions:
+- No raw HTTP jargon in UI (`401 Unauthorized` → "Sua sessão expirou. Entre novamente.").
+- No DB jargon (`registro` → `item`, `tenant` → `empresa`).
+- No anglicisms when a Portuguese word fits (`workspace` is OK by convention; `service request` becomes `pedido`).
+- Buttons with action verbs (`Criar pedido`, not `Submeter`).
+
+Erros remotos (HTTP) → toast via sonner. Erros de validação (zod) → inline below input com `role="alert"`. Sucesso de login NÃO usa toast (B2B premium não celebra). Logout sem confirm dialog.
+
+### 16.5 Hygiene files
+
+- `.gitattributes` (root) forces `* text=auto eol=lf` so cross-OS clones don't churn line endings on every commit. Windows-only scripts (`*.cmd`, `*.bat`, `*.ps1`) keep CRLF.
+- `.gitignore` (root) is comprehensive: deps, build output, coverage, env-local files, OS noise, editor state, Claude per-machine state. Per-app `.gitignore` (e.g., `apps/web/.gitignore`) covers app-specific output.
+- `.env.example` IS committed (`apps/api/.env.example`, `apps/web/.env.example`). Real `.env*.local` files NEVER are.

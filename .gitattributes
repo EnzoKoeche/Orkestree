@@ -1,0 +1,23 @@
+# Force LF in the repo for every text file. Windows clones still see CRLF
+# locally if `core.autocrlf=true`; the on-disk LF here keeps blame, diffs,
+# and shell scripts (apps/api/scripts/*.sh) byte-identical across machines.
+* text=auto eol=lf
+
+# Windows-only scripts must stay CRLF — cmd.exe and PowerShell tolerate LF
+# but a few corner cases (multi-line `if/else`, here-doc-style heredocs,
+# scripts piped through Notepad) misparse without the carriage return.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Treat the usual binary formats as binary so Git doesn't try to normalise
+# their line endings or diff them as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.lock binary

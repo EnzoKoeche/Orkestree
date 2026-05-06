@@ -1,5 +1,6 @@
 import { ClipboardList, Plus } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateCell } from '@/components/ui/DateCell';
@@ -222,12 +223,28 @@ export default async function RequestsPage({
                     ) : (
                         <TableBody>
                             {data.items.map((req) => (
-                                <TableRow key={req.id}>
+                                // Stretched-link pattern: the row is `relative`, the title cell holds
+                                // a `<Link>` whose `::after` pseudo-element fills `inset-0` of the
+                                // row so the entire row reacts to clicks. Wrapping <TableRow> in
+                                // <Link> would produce invalid <a><tr></tr></a> markup. Single
+                                // anchor per row keeps the screen-reader story clean ("Manutenção
+                                // mensal — agosto, link"); the row's `focus-within` bg gives the
+                                // visible focus signal on Tab while the Link itself owns the focus
+                                // ring around the title text.
+                                <TableRow
+                                    key={req.id}
+                                    className="relative focus-within:bg-muted/50"
+                                >
                                     <TableCell className="font-medium tabular-nums text-muted-foreground">
                                         #{req.number}
                                     </TableCell>
                                     <TableCell className="font-medium text-foreground">
-                                        {req.title}
+                                        <Link
+                                            href={`/requests/${req.id}`}
+                                            className="rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            {req.title}
+                                        </Link>
                                     </TableCell>
                                     <TableCell className="text-foreground">
                                         {req.client ? (

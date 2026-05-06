@@ -14,6 +14,7 @@ import type { Session } from '@/types/domain';
 
 const SESSION_KEY = 'orkestree.session.v1';
 const SESSION_COOKIE = 'orkestree_session';
+const ACTIVE_COMPANY_KEY = 'orkestree.active_company.v1';
 
 // Cookie max-age aligned to the API's JWT_EXPIRES_IN (7d) — keeps the
 // middleware gate consistent with what the server will actually accept.
@@ -64,6 +65,33 @@ export function clearStoredSession(): void {
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(SESSION_KEY);
     document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0`;
+}
+
+// ── Active company persistence ──────────────────────────────────────────────
+//
+// The active workspace lives OUTSIDE the persisted Session so a memberships
+// refresh never invalidates the JWT shape. Only the company id is stored
+// here; the full Membership object is hydrated on every load via
+// /memberships/me, then matched to this id.
+
+export function readStoredActiveCompanyId(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(ACTIVE_COMPANY_KEY);
+        return raw && raw.length > 0 ? raw : null;
+    } catch {
+        return null;
+    }
+}
+
+export function writeStoredActiveCompanyId(companyId: string): void {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(ACTIVE_COMPANY_KEY, companyId);
+}
+
+export function clearStoredActiveCompanyId(): void {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(ACTIVE_COMPANY_KEY);
 }
 
 // ── Errors ──────────────────────────────────────────────────────────────────

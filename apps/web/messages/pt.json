@@ -15,11 +15,13 @@
         "proposals": "Propostas",
         "settings": "Configurações"
     },
-    "header": {
-        "workspaceLabel": "Workspace",
-        "userMenu": {
-            "signOut": "Sair"
-        }
+    "workspace": {
+        "label": "WORKSPACE",
+        "switching": "Trocando…"
+    },
+    "userMenu": {
+        "signOut": "Sair",
+        "switchWorkspace": "Trocar empresa"
     },
     "empty": {
         "dashboard": {
@@ -33,7 +35,8 @@
         "emailLabel": "E-mail",
         "passwordLabel": "Senha",
         "signInError": "E-mail ou senha incorretos. Tente novamente.",
-        "sessionExpired": "Sua sessão expirou. Entre novamente."
+        "sessionExpired": "Sua sessão expirou. Entre novamente.",
+        "restoring": "Restaurando sessão…"
     },
     "signIn": {
         "title": "Entrar",

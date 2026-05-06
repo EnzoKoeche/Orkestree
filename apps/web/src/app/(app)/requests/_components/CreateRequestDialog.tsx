@@ -52,8 +52,14 @@ export function CreateRequestDialog({ open, onOpenChange }: Props) {
     const [data, setData] = useState<LoadedData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // CRITICAL: do NOT include `loading` in deps. The effect writes to it;
+    // including it as dep creates a race where setLoading(true) re-runs the
+    // effect, the cleanup aborts the original fetch, and the .finally's
+    // `if (ac.signal.aborted) return;` guard skips setLoading(false) — leaving
+    // loading=true forever. The early-return guard only needs `data`: after
+    // a successful first run, `data !== null` blocks any further fetches.
     useEffect(() => {
-        if (!open || !companyId || data || loading) return;
+        if (!open || !companyId || data) return;
 
         const ac = new AbortController();
         setLoading(true);
@@ -89,7 +95,7 @@ export function CreateRequestDialog({ open, onOpenChange }: Props) {
             });
 
         return () => ac.abort();
-    }, [open, companyId, data, loading, tErr]);
+    }, [open, companyId, data, tErr]);
 
     const handleClose = (next: boolean) => {
         if (!next) {

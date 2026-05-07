@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs on the same branch when a newer push lands —
+# avoids N parallel runs eating minutes during force-push / PR rebase.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      # setup-node@v4's `cache: pnpm` resolves the pnpm store path automatically
+      # (via Corepack) and keys the cache off pnpm-lock.yaml — hits make install
+      # ~10s vs ~60s cold.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # frozen-lockfile: CI never updates the lock. A divergence between
+      # package.json and lock fails the run instead of silently mutating.
+      - run: pnpm install --frozen-lockfile
+
+      # Note: lint steps removed temporarily — ESLint not properly
+      # configured in either app:
+      #   - apps/api: eslint not installed in devDependencies
+      #   - apps/web: eslint installed but no .eslintrc.json (next lint
+      #     triggers interactive wizard, fails in CI)
+      # TypeScript strict + tests + build cover the gap. See TASK-CI-2.
+
+      # Generate Prisma client (pnpm v10 blocks postinstall scripts
+      # by default — see TASK-CI-3 for arch fix)
+      - run: pnpm --filter @orkestree/api exec prisma generate
+
+      # Typecheck both apps. Each owns a `typecheck: tsc --noEmit` script.
+      - run: pnpm --filter @orkestree/api typecheck
+      - run: pnpm --filter @orkestree/web typecheck
+
+      # Tests — api uses jest, web uses vitest run. Both fail the job on
+      # any non-green spec. No coverage thresholds in V1.
+      - run: pnpm --filter @orkestree/api test
+      - run: pnpm --filter @orkestree/web test
+
+      # Build last — most expensive. Catches bundler / type errors that
+      # only surface during the production build (e.g. Next's Server vs
+      # Client component constraints).
+      - run: pnpm --filter @orkestree/api build
+      - run: pnpm --filter @orkestree/web build

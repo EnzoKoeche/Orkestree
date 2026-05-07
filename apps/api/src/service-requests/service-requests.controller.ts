@@ -87,6 +87,19 @@ export class ServiceRequestsController {
     // ── Stage Transitions ─────────────────────────────────────────────────────
 
     @RequirePermission(CompanyResource.REQUEST, PermissionAction.EDIT)
+    @Get(':requestId/available-transitions')
+    getAvailableTransitions(
+        @CurrentMembership() membership: Pick<CompanyMembership, 'id' | 'companyId' | 'userId' | 'role'>,
+        @Param('requestId') requestId: string,
+    ) {
+        return this.stageTransitionsService.getAvailableTransitions(
+            membership.companyId,
+            requestId,
+            membership,
+        );
+    }
+
+    @RequirePermission(CompanyResource.REQUEST, PermissionAction.EDIT)
     @Post(':requestId/transition')
     transitionStage(
         @CurrentMembership() membership: Pick<CompanyMembership, 'id' | 'companyId' | 'userId' | 'role'>,

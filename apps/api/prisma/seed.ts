@@ -115,6 +115,20 @@ const WORKFLOW_STAGES = [
     { code: 'entrega', name: 'Entrega', sortOrder: 6, isInitial: false, isFinal: true, color: '#10b981' },
 ] as const;
 
+// Forward-only operational pipeline. Backward transitions (e.g., "QA failed →
+// Modelagem") are deferred until product feedback shows demand — adding them
+// later is additive (one extra row per declared edge), no schema change.
+// requiresApproval is false on every edge in V1; flip per-edge later if a
+// quality gate (likely qa → entrega) wants to require REQUEST.APPROVE.
+const WORKFLOW_TRANSITIONS: ReadonlyArray<{ from: string; to: string; requiresApproval: boolean }> = [
+    { from: 'triagem', to: 'modelagem', requiresApproval: false },
+    { from: 'modelagem', to: 'impressao', requiresApproval: false },
+    { from: 'impressao', to: 'cura_uv', requiresApproval: false },
+    { from: 'cura_uv', to: 'pos_processamento', requiresApproval: false },
+    { from: 'pos_processamento', to: 'qa', requiresApproval: false },
+    { from: 'qa', to: 'entrega', requiresApproval: false },
+];
+
 const SERVICE_TYPES = [
     { code: 'protese_dentaria_3d', name: 'Prótese dentária 3D', description: 'Próteses dentárias customizadas impressas em resina biocompatível.' },
     { code: 'peca_cirurgica', name: 'Peça cirúrgica customizada', description: 'Modelos anatômicos, guias cirúrgicos e peças específicas para procedimentos médicos.' },
@@ -364,6 +378,42 @@ async function seedStudioOperationalData(
         stagesByCode.set(s.code, stage);
     }
     console.log(`✓ stages      ${WORKFLOW_STAGES.length} stages (triagem → entrega)`);
+
+    // 2b. Stage transitions — declare the legal edges of the workflow's state
+    //     machine. Idempotent: lookup by (workflowId, fromStageId, toStageId)
+    //     before insert so re-seeding an existing DB doesn't duplicate or
+    //     fail on the @@unique. Without this, /requests/:id/available-
+    //     transitions returns [] for every request and the UI's TransitionMenu
+    //     stays hidden.
+    for (const t of WORKFLOW_TRANSITIONS) {
+        const fromStage = stagesByCode.get(t.from);
+        const toStage = stagesByCode.get(t.to);
+        if (!fromStage || !toStage) {
+            throw new Error(
+                `Seed: cannot declare transition ${t.from} → ${t.to}: stage(s) missing.`,
+            );
+        }
+        const existing = await prisma.stageTransition.findFirst({
+            where: {
+                workflowId: workflow.id,
+                fromStageId: fromStage.id,
+                toStageId: toStage.id,
+            },
+            select: { id: true },
+        });
+        if (!existing) {
+            await prisma.stageTransition.create({
+                data: {
+                    companyId,
+                    workflowId: workflow.id,
+                    fromStageId: fromStage.id,
+                    toStageId: toStage.id,
+                    requiresApproval: t.requiresApproval,
+                },
+            });
+        }
+    }
+    console.log(`✓ transitions ${WORKFLOW_TRANSITIONS.length} forward edges`);
 
     // 3. Service types — find by (companyId, code).
     const serviceTypesByCode = new Map<string, { id: string }>();

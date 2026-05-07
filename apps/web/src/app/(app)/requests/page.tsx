@@ -1,7 +1,7 @@
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
 import { Suspense } from 'react';
-import { Button } from '@/components/ui/button';
 import { DateCell } from '@/components/ui/DateCell';
 import { EmptyTable } from '@/components/ui/EmptyTable';
 import { LoadingState } from '@/components/ui/States';
@@ -17,12 +17,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { requestsApi } from '@/lib/api';
 import { ApiError } from '@/lib/http';
@@ -31,6 +25,7 @@ import type {
     Paginated,
     ServiceRequestListItem,
 } from '@/types/domain';
+import { NewRequestButton } from './_components/NewRequestButton';
 import { RequestsPagination } from './_components/RequestsPagination';
 import { RequestsToolbar } from './_components/RequestsToolbar';
 
@@ -192,23 +187,7 @@ export default async function RequestsPage({
                                             icon={ClipboardList}
                                             title={t('empty.noRequests.title')}
                                             description={t('empty.noRequests.description')}
-                                            action={
-                                                <TooltipProvider delayDuration={200}>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <span tabIndex={0}>
-                                                                <Button disabled aria-disabled="true">
-                                                                    <Plus className="h-4 w-4" aria-hidden="true" />
-                                                                    {t('newRequest')}
-                                                                </Button>
-                                                            </span>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            Disponível em breve
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            }
+                                            action={<NewRequestButton />}
                                         />
                                     ) : showNoResults ? (
                                         <EmptyTable
@@ -222,12 +201,28 @@ export default async function RequestsPage({
                     ) : (
                         <TableBody>
                             {data.items.map((req) => (
-                                <TableRow key={req.id}>
+                                // Stretched-link pattern: the row is `relative`, the title cell holds
+                                // a `<Link>` whose `::after` pseudo-element fills `inset-0` of the
+                                // row so the entire row reacts to clicks. Wrapping <TableRow> in
+                                // <Link> would produce invalid <a><tr></tr></a> markup. Single
+                                // anchor per row keeps the screen-reader story clean ("Manutenção
+                                // mensal — agosto, link"); the row's `focus-within` bg gives the
+                                // visible focus signal on Tab while the Link itself owns the focus
+                                // ring around the title text.
+                                <TableRow
+                                    key={req.id}
+                                    className="relative focus-within:bg-muted/50"
+                                >
                                     <TableCell className="font-medium tabular-nums text-muted-foreground">
                                         #{req.number}
                                     </TableCell>
                                     <TableCell className="font-medium text-foreground">
-                                        {req.title}
+                                        <Link
+                                            href={`/requests/${req.id}`}
+                                            className="rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            {req.title}
+                                        </Link>
                                     </TableCell>
                                     <TableCell className="text-foreground">
                                         {req.client ? (
@@ -281,9 +276,12 @@ export default async function RequestsPage({
 async function Header() {
     const t = await getTranslations('requests');
     return (
-        <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-1">
+                <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
+                <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+            </div>
+            <NewRequestButton />
         </div>
     );
 }

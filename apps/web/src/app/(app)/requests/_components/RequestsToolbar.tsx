@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
@@ -12,16 +12,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RequestsToolbar — status filter + (currently disabled) Novo pedido CTA.
+// RequestsToolbar — status filter + clear-filters escape hatch.
 //
 // Two pieces of interactivity, both URL-driven so the Server Component above
 // stays the source of truth for the table:
@@ -37,10 +31,8 @@ import { cn } from '@/lib/utils';
 //     reachable BEFORE the table empties — the empty-state CTA is a
 //     fallback, not the only escape hatch.
 //
-//   - Novo pedido button: disabled in this slice. Sessão 10 wires the create
-//     flow. The button is visible (P2: hierarquia visual — primary action of
-//     this page belongs in the top-right) but disabled-state styling makes
-//     "not yet" the literal read; tooltip elaborates on hover.
+// "Novo pedido" CTA lives upstream in <NewRequestButton/>, rendered by
+// page.tsx in the page header (and in the empty state action slot).
 //
 // useTransition + isPending dims the toolbar while Next refetches the Server
 // Component — visible feedback that the click is doing something.
@@ -126,20 +118,6 @@ export function RequestsToolbar() {
                     </Button>
                 ) : null}
             </div>
-
-            <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <span tabIndex={0}>
-                            <Button disabled aria-disabled="true">
-                                <Plus className="h-4 w-4" aria-hidden="true" />
-                                {t('newRequest')}
-                            </Button>
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Disponível em breve</TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
         </div>
     );
 }

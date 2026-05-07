@@ -10,6 +10,7 @@
         "back": "Voltar"
     },
     "nav": {
+        "home": "Início",
         "requests": "Pedidos",
         "clients": "Clientes",
         "proposals": "Propostas",
@@ -99,7 +100,146 @@
             }
         },
         "noClient": "Sem cliente",
-        "noAssignee": "Sem responsável"
+        "noAssignee": "Sem responsável",
+        "transition": {
+            "trigger": "Mover para…",
+            "moving": "Movendo…",
+            "requiresApproval": "Requer aprovação",
+            "success": "Pedido movido para {stage}.",
+            "error": "Não foi possível mover o pedido.",
+            "approvalRequired": "Você não tem permissão para aprovar essa transição."
+        },
+        "cancel": {
+            "trigger": "Cancelar",
+            "alreadyCancelledTooltip": "Pedido já cancelado",
+            "title": "Cancelar pedido?",
+            "warning": "Esta ação não pode ser desfeita. O pedido será marcado como cancelado e não poderá mais ter etapas alteradas.",
+            "reasonLabel": "Motivo",
+            "reasonOptional": "(opcional)",
+            "reasonPlaceholder": "Por que esse pedido está sendo cancelado?",
+            "reasonTooLong": "Motivo muito longo (máx. 1024 caracteres).",
+            "submitting": "Cancelando…",
+            "confirmLabel": "Cancelar pedido",
+            "keepLabel": "Manter pedido",
+            "success": "Pedido cancelado.",
+            "error": "Não foi possível cancelar o pedido."
+        },
+        "create": {
+            "trigger": "Novo pedido",
+            "title": "Novo pedido",
+            "description": "Preencha os dados do pedido. Você pode editar depois.",
+            "fields": {
+                "serviceType": "Tipo de serviço",
+                "serviceTypePlaceholder": "Selecione um tipo",
+                "client": "Cliente",
+                "clientPlaceholder": "Selecione um cliente…",
+                "clientSearchPlaceholder": "Buscar por nome ou CPF/CNPJ…",
+                "clientNone": "Sem cliente",
+                "clientLoading": "Buscando…",
+                "clientEmpty": "Nenhum cliente encontrado.",
+                "clientEmptyInitial": "Nenhum cliente cadastrado ainda.",
+                "title": "Título",
+                "titlePlaceholder": "Ex.: Manutenção mensal — agosto",
+                "description": "Descrição",
+                "descriptionPlaceholder": "Detalhes adicionais (opcional)",
+                "optionalSuffix": "(opcional)",
+                "selectPlaceholder": "Selecione…",
+                "multiselectPlaceholder": "Selecione uma ou mais opções…",
+                "multiselectSummary": "{count, plural, =1 {1 selecionado} other {# selecionados}}",
+                "multiselectEmpty": "Nenhuma opção corresponde.",
+                "booleanYes": "Sim",
+                "booleanNo": "Não",
+                "fileDisabled": "Upload disponível em breve."
+            },
+            "submit": "Criar pedido",
+            "submitting": "Criando…",
+            "cancel": "Cancelar",
+            "errors": {
+                "serviceTypeRequired": "Selecione um tipo de serviço.",
+                "titleRequired": "Informe o título do pedido.",
+                "titleTooLong": "Título muito longo (máx. 256 caracteres).",
+                "descriptionTooLong": "Descrição muito longa (máx. 4096 caracteres).",
+                "fieldRequired": "Campo obrigatório.",
+                "emailInvalid": "E-mail inválido.",
+                "urlInvalid": "URL inválida.",
+                "numberInvalid": "Informe um número válido.",
+                "integerInvalid": "Informe um número inteiro.",
+                "selectInvalid": "Opção inválida.",
+                "multiselectInvalid": "Uma ou mais opções são inválidas.",
+                "fileRequiredBlocked": "Este tipo de pedido exige um campo de arquivo, mas o upload ainda não está disponível. Aguarde a próxima versão.",
+                "loadServiceTypes": "Não foi possível carregar os tipos de serviço.",
+                "loadCustomFields": "Não foi possível carregar os campos personalizados.",
+                "loadClients": "Não foi possível buscar clientes.",
+                "createFailed": "Não foi possível criar o pedido.",
+                "validationGeneric": "Verifique os campos abaixo."
+            }
+        },
+        "detail": {
+            "back": "Voltar para pedidos",
+            "loading": "Carregando pedido…",
+            "errorTitle": "Não foi possível carregar o pedido",
+            "errorFallback": "Tente novamente em instantes.",
+            "notFoundTitle": "Pedido não encontrado",
+            "notFoundDescription": "Esse pedido pode ter sido removido ou não está disponível para o seu acesso.",
+            "tabs": {
+                "details": "Detalhes",
+                "workflow": "Fluxo",
+                "tasks": "Tarefas",
+                "history": "Histórico"
+            },
+            "header": {
+                "type": "Tipo",
+                "client": "Cliente",
+                "assignee": "Responsável",
+                "createdBy": "Criado por",
+                "createdAt": "Criado em"
+            },
+            "details": {
+                "descriptionTitle": "Descrição",
+                "noDescription": "Sem descrição.",
+                "fieldsTitle": "Campos personalizados",
+                "noFields": "Nenhum campo personalizado para este tipo de pedido.",
+                "noValue": "—",
+                "cancelledTitle": "Cancelamento",
+                "cancelledReasonLabel": "Motivo",
+                "cancelledNoReason": "Sem motivo registrado.",
+                "cancelledAtLabel": "Data"
+            },
+            "workflow": {
+                "currentStageTitle": "Etapa atual",
+                "finalStage": "Etapa final",
+                "historyTitle": "Por onde passou",
+                "createdInStage": "Criado em {stage}",
+                "movedToStage": "Movido para {stage}",
+                "noHistory": "Nenhuma movimentação ainda."
+            },
+            "tasks": {
+                "empty": "Nenhuma tarefa vinculada a este pedido.",
+                "columns": {
+                    "number": "Tarefa",
+                    "title": "Título",
+                    "status": "Status",
+                    "assignee": "Responsável",
+                    "createdAt": "Criada em"
+                },
+                "status": {
+                    "OPEN": "Aberta",
+                    "IN_PROGRESS": "Em andamento",
+                    "DONE": "Concluída",
+                    "CANCELLED": "Cancelada"
+                },
+                "noAssignee": "Sem responsável"
+            },
+            "history": {
+                "empty": "Sem histórico ainda.",
+                "stageInitial": "Pedido criado em {to}",
+                "stageMoved": "Movido de {from} para {to}",
+                "assigned": "{member} foi atribuído",
+                "by": "por {actor}",
+                "cancelled": "Pedido cancelado",
+                "cancelledReason": "Motivo: {reason}"
+            }
+        }
     },
     "pagination": {
         "previous": "Anterior",

@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, FileText, Settings, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, FileText, Home, Settings, Users, type LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 // locales drop in without touching this file.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type NavLabelKey = 'requests' | 'clients' | 'proposals' | 'settings';
+type NavLabelKey = 'home' | 'requests' | 'clients' | 'proposals' | 'settings';
 
 interface NavItem {
     href: string;
@@ -41,7 +41,11 @@ interface NavItem {
     matchPrefix: string;
 }
 
+// Home (`/`) uses an exact-match-only rule: matchPrefix is the same as href, so
+// `pathname.startsWith('//')` never fires — the item only lights up on the
+// dashboard route itself, not on every page (which all start with '/').
 const PRIMARY_NAV: readonly NavItem[] = [
+    { href: '/', icon: Home, labelKey: 'home', matchPrefix: '/' },
     { href: '/requests', icon: ClipboardList, labelKey: 'requests', matchPrefix: '/requests' },
     { href: '/clients', icon: Users, labelKey: 'clients', matchPrefix: '/clients' },
     { href: '/proposals', icon: FileText, labelKey: 'proposals', matchPrefix: '/proposals' },
@@ -84,7 +88,16 @@ export function Sidebar() {
     return (
         <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">
             <div className="px-3 pb-2 pt-4">
-                <Logo size="sm" />
+                <Link
+                    href="/"
+                    aria-label="Voltar para o início"
+                    className={cn(
+                        '-mx-1 inline-flex cursor-pointer rounded-md px-1 py-0.5 transition-opacity hover:opacity-80',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+                    )}
+                >
+                    <Logo size="sm" />
+                </Link>
             </div>
             <nav className="mt-2 flex-1 space-y-0.5 px-3" aria-label="Navegação principal">
                 {PRIMARY_NAV.map((item) => (

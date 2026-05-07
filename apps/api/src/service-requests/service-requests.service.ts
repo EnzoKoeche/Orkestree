@@ -46,6 +46,12 @@ const LIST_SELECT = {
     cancellationReason: true,
     createdAt: true,
     updatedAt: true,
+    // FK exposed (not the relation): the detail page resolves valid stage
+    // transitions by GETting /config/workflows/:workflowId. Carrying the FK
+    // here saves the frontend a serviceType→workflow lookup hop. Not a
+    // sensitive field — composite FK (companyId, workflowId) is tenant-scoped
+    // and downstream workflow access is permission-gated independently.
+    workflowId: true,
     serviceType: {
         select: { id: true, code: true, name: true },
     },

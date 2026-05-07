@@ -128,6 +128,10 @@ export interface ServiceRequestListItem {
     cancellationReason: string | null;
     createdAt: string;
     updatedAt: string;
+    /** FK to the workflow this request belongs to — fixed at creation time.
+     *  Used by the detail page to load valid stage transitions without an
+     *  extra serviceType→workflow lookup hop. */
+    workflowId: string;
     serviceType: ServiceRequestType;
     currentStage: ServiceRequestStage;
     client: ServiceRequestClient | null;
@@ -144,4 +148,251 @@ export interface ListServiceRequestsParams {
     isCancelled?: boolean;
     limit?: number;
     skip?: number;
+}
+
+// ── Service Request detail (mirror of DETAIL_SELECT) ────────────────────────
+//
+// Adds stageHistory and assignments on top of the list shape. stageHistory is
+// ordered ASC (origin → current) so the workflow tab can render a forward
+// timeline; assignments DESC (most recent first). Backend never includes
+// fieldValues here — those land via the dedicated /field-values endpoint
+// because they are role-aware in their own way.
+
+export interface RequestStageHistoryEntry {
+    id: string;
+    /** null on the very first row — that one stamps the request's initial
+     *  placement when it was created (no fromStage exists). */
+    fromStageId: string | null;
+    note: string | null;
+    createdAt: string;
+    toStage: { id: string; code: string; name: string };
+    /** actorMembershipId is NOT NULL in the schema; the actor is always the
+     *  membership that triggered the transition. */
+    actorMembership: MembershipRef;
+}
+
+export interface RequestAssignmentEntry {
+    id: string;
+    createdAt: string;
+    membership: MembershipRef;
+    /** assignedByMembershipId is NOT NULL in the schema. */
+    assignedByMembership: MembershipRef;
+}
+
+export interface ServiceRequestDetail extends ServiceRequestListItem {
+    stageHistory: RequestStageHistoryEntry[];
+    assignments: RequestAssignmentEntry[];
+}
+
+// ── Custom field values (GET /requests/:id/field-values) ─────────────────────
+
+/** Mirrors @prisma/client CustomFieldType. Hand-typed to avoid pulling the
+ *  Prisma client into the web bundle. Validated against schema.prisma. */
+export type CustomFieldType =
+    | 'TEXT'
+    | 'TEXTAREA'
+    | 'NUMBER'
+    | 'DECIMAL'
+    | 'DATE'
+    | 'DATETIME'
+    | 'SELECT'
+    | 'MULTISELECT'
+    | 'BOOLEAN'
+    | 'FILE'
+    | 'PHONE'
+    | 'EMAIL'
+    | 'URL';
+
+/** Mirrors @prisma/client CustomFieldTarget — full enum, even though the
+ *  current frontend only consumes REQUEST. Keeping the type honest about
+ *  the domain avoids silent narrowing if a future surface starts reading
+ *  CLIENT/PROPOSAL/SERVICE_ORDER/CONTACT custom fields. */
+export type CustomFieldTarget =
+    | 'REQUEST'
+    | 'CLIENT'
+    | 'PROPOSAL'
+    | 'SERVICE_ORDER'
+    | 'CONTACT';
+
+/** Option row for SELECT / MULTISELECT custom fields. value is the wire
+ *  identifier persisted in valueText / valueMulti; label is what the user
+ *  sees. */
+export interface CustomFieldOption {
+    id: string;
+    label: string;
+    value: string;
+    sortOrder: number;
+}
+
+/** Wire shape returned by GET /companies/:companyId/config/custom-fields.
+ *  options is always present (Commit Ab) — empty array for non-option field
+ *  types. serviceType is null when the field applies globally to its target
+ *  (e.g. all REQUESTs regardless of serviceType). */
+export interface CustomFieldListItem {
+    id: string;
+    code: string;
+    label: string;
+    target: CustomFieldTarget;
+    type: CustomFieldType;
+    isRequired: boolean;
+    isActive: boolean;
+    sortOrder: number;
+    placeholder: string | null;
+    helpText: string | null;
+    createdAt: string;
+    updatedAt: string;
+    serviceType: {
+        id: string;
+        code: string;
+        name: string;
+        isActive: boolean;
+    } | null;
+    options: CustomFieldOption[];
+}
+
+export interface ListCustomFieldsParams {
+    target?: CustomFieldTarget;
+    serviceTypeId?: string;
+    isActive?: boolean;
+}
+
+/** Wire shape returned by GET /requests/:id/field-values. Backend stores
+ *  values in typed columns (only one is set per row depending on fieldType);
+ *  the frontend reads the matching one based on customField.type. */
+export interface RequestFieldValue {
+    id: string;
+    customFieldId: string;
+    valueText: string | null;
+    valueNumber: string | null;
+    valueBoolean: boolean | null;
+    valueDate: string | null;
+    valueMulti: string[];
+    customField: {
+        id: string;
+        code: string;
+        label: string;
+        type: CustomFieldType;
+    };
+}
+
+// ── Tasks (mirror of GET /companies/:companyId/tasks?requestId=…) ────────────
+//
+// Endpoint returns a plain array (no pagination wrapper) — Tasks are scoped to
+// a single request in this view, so the count is small.
+
+export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface TaskListItem {
+    id: string;
+    number: number;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    dueAt: string | null;
+    completedAt: string | null;
+    cancelledAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    request: { id: string; number: number; title: string };
+    assignedMembership: MembershipRef | null;
+    createdByMembership: MembershipRef;
+}
+
+export interface ListTasksParams {
+    requestId?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    assignedMembershipId?: string;
+    limit?: number;
+    skip?: number;
+}
+
+// ── Clients (mirror of GET /companies/:companyId/clients) ───────────────────
+//
+// Plain array response (no pagination wrapper). search query is server-side
+// case-insensitive over name + taxId — used by the request creation modal's
+// client picker via debounced fetches.
+
+export interface ClientListItem {
+    id: string;
+    /** Per-tenant sequential identifier — display as "C-12". */
+    number: number;
+    type: ClientType;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    taxId: string | null;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ListClientsParams {
+    type?: ClientType;
+    isActive?: boolean;
+    search?: string;
+    limit?: number;
+    skip?: number;
+}
+
+// ── Service Types (mirror of GET /companies/:companyId/config/service-types) ─
+//
+// Returns full LIST_SELECT projection — workflowId is exposed because some
+// service types pin a specific workflow, others fall back to the company
+// default (workflowId = null on the row).
+
+export interface ServiceTypeListItem {
+    id: string;
+    code: string;
+    name: string;
+    workflowId: string | null;
+    isActive: boolean;
+}
+
+// ── Create Service Request payload ──────────────────────────────────────────
+
+export interface SetFieldValueItem {
+    customFieldId: string;
+    valueText?: string | null;
+    valueNumber?: number | null;
+    valueBoolean?: boolean | null;
+    /** ISO 8601 string (DATE → YYYY-MM-DD, DATETIME → full ISO). */
+    valueDate?: string | null;
+    valueMulti?: string[];
+}
+
+export interface CreateServiceRequestPayload {
+    serviceTypeId: string;
+    clientId?: string;
+    title: string;
+    description?: string;
+    fieldValues?: SetFieldValueItem[];
+}
+
+// ── Available Transitions (mirror of GET /requests/:id/available-transitions) ─
+//
+// Server-side filtered: only transitions whose toStage is active and whose
+// fromStageId matches the request's currentStage. Cancelled requests get an
+// empty array. requiresApproval is NOT filtered by APPROVE permission — the
+// UI badges it and surfaces a friendly 403 toast on click for users without
+// REQUEST.APPROVE.
+
+export interface AvailableTransition {
+    toStageId: string;
+    toStageName: string;
+    toStageIsFinal: boolean;
+    requiresApproval: boolean;
+}
+
+export interface TransitionStagePayload {
+    toStageId: string;
+    note?: string;
+}
+
+export interface CancelRequestPayload {
+    /** Optional free-text reason persisted as request.cancellationReason
+     *  and surfaced in the detail page's Cancelamento section. Max 1024
+     *  chars per backend DTO. */
+    reason?: string;
 }

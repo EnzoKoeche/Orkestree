@@ -42,14 +42,199 @@
         "noClient": "Sem cliente",
         "stage": "Etapa: {name}"
     },
+    "clients": {
+        "title": "Clientes",
+        "subtitle": "Cadastro de pessoas físicas e jurídicas que solicitam serviços.",
+        "newClient": "Novo cliente",
+        "columns": {
+            "number": "Cliente",
+            "name": "Nome",
+            "type": "Tipo",
+            "taxId": "CPF/CNPJ",
+            "contact": "Contato",
+            "status": "Situação",
+            "createdAt": "Cadastrado em"
+        },
+        "type": {
+            "individual": "Pessoa física",
+            "business": "Pessoa jurídica",
+            "individualShort": "PF",
+            "businessShort": "PJ"
+        },
+        "status": {
+            "active": "Ativo",
+            "inactive": "Inativo"
+        },
+        "filters": {
+            "typeAll": "Todos os tipos",
+            "typeIndividual": "Pessoa física",
+            "typeBusiness": "Pessoa jurídica",
+            "statusActive": "Ativos",
+            "statusInactive": "Inativos",
+            "statusAll": "Todos",
+            "searchPlaceholder": "Buscar por nome ou CPF/CNPJ…",
+            "clear": "Limpar filtros"
+        },
+        "empty": {
+            "noClients": {
+                "title": "Nenhum cliente cadastrado ainda",
+                "description": "Cadastre o primeiro cliente para começar a registrar pedidos."
+            },
+            "noResults": {
+                "title": "Nenhum cliente encontrado",
+                "description": "Tente ajustar os filtros ou limpar a busca para ver mais resultados."
+            }
+        },
+        "errorTitle": "Não foi possível carregar os clientes",
+        "errorFallback": "Tente novamente em instantes.",
+        "noContact": "Sem contato",
+        "deactivate": {
+            "trigger": "Desativar",
+            "title": "Desativar {name}?",
+            "description": "Cliente desativado não aparece em buscas e não pode receber novos pedidos. Você pode reativar depois se mudar de ideia.",
+            "confirm": "Desativar",
+            "cancel": "Manter ativo",
+            "submitting": "Desativando…",
+            "success": "Cliente desativado.",
+            "error": "Não foi possível desativar o cliente."
+        },
+        "reactivate": {
+            "trigger": "Reativar",
+            "submitting": "Reativando…",
+            "success": "Cliente reativado.",
+            "error": "Não foi possível reativar o cliente."
+        },
+        "form": {
+            "createTitle": "Novo cliente",
+            "editTitle": "Editar cliente",
+            "createDescription": "Cadastre uma pessoa física ou jurídica.",
+            "editDescription": "Atualize os dados do cliente. O tipo não pode ser alterado.",
+            "submitCreate": "Criar cliente",
+            "submitEdit": "Salvar alterações",
+            "submitting": "Salvando…",
+            "creating": "Criando…",
+            "cancel": "Cancelar",
+            "successCreate": "Cliente cadastrado.",
+            "successEdit": "Cliente atualizado.",
+            "warningPartial": "Cliente atualizado, mas houve erro nos campos personalizados. Tente salvar novamente.",
+            "sections": {
+                "type": "Tipo",
+                "identification": "Identificação",
+                "contact": "Documento e contato",
+                "specifics": "Específicos",
+                "address": "Endereço",
+                "customFields": "Campos personalizados",
+                "notes": "Observações"
+            },
+            "fields": {
+                "typeIndividual": "Pessoa física",
+                "typeBusiness": "Pessoa jurídica",
+                "name": "Nome completo",
+                "namePlaceholder": "Ex.: João Silva",
+                "legalName": "Razão social",
+                "legalNamePlaceholder": "Ex.: Hospital São Paulo Serviços Médicos LTDA",
+                "tradeName": "Nome fantasia",
+                "tradeNamePlaceholder": "Ex.: Hospital São Paulo",
+                "taxId": "CPF/CNPJ",
+                "taxIdPlaceholderPF": "000.000.000-00",
+                "taxIdPlaceholderPJ": "00.000.000/0000-00",
+                "email": "E-mail",
+                "emailPlaceholder": "contato@empresa.com.br",
+                "phone": "Telefone",
+                "phonePlaceholder": "+55 11 99999-9999",
+                "dateOfBirth": "Data de nascimento",
+                "stateRegistration": "Inscrição estadual",
+                "municipalRegistration": "Inscrição municipal",
+                "addressStreet": "Logradouro",
+                "addressNumber": "Número",
+                "addressComplement": "Complemento",
+                "addressNeighborhood": "Bairro",
+                "addressCity": "Cidade",
+                "addressState": "UF",
+                "addressPostalCode": "CEP",
+                "addressCountry": "País",
+                "notesLabel": "Anotações internas",
+                "notesPlaceholder": "Anotações internas (não visíveis para o cliente)",
+                "optionalSuffix": "(opcional)"
+            },
+            "errors": {
+                "nameRequired": "Informe o nome completo.",
+                "nameTooLong": "Nome muito longo (máx. 256 caracteres).",
+                "legalNameRequired": "Informe a razão social.",
+                "legalNameTooLong": "Razão social muito longa (máx. 256 caracteres).",
+                "tradeNameTooLong": "Nome fantasia muito longo (máx. 256 caracteres).",
+                "taxIdInvalidCPF": "CPF deve ter 11 dígitos.",
+                "taxIdInvalidCNPJ": "CNPJ deve ter 14 dígitos.",
+                "emailInvalid": "E-mail inválido.",
+                "phoneTooLong": "Telefone muito longo (máx. 32 caracteres).",
+                "notesTooLong": "Observações muito longas (máx. 4096 caracteres).",
+                "addressStateInvalid": "UF deve ter 2 letras.",
+                "loadCustomFields": "Não foi possível carregar os campos personalizados.",
+                "createFailed": "Não foi possível criar o cliente.",
+                "updateFailed": "Não foi possível atualizar o cliente.",
+                "validationGeneric": "Verifique os campos abaixo."
+            }
+        },
+        "detail": {
+            "back": "Voltar para clientes",
+            "loading": "Carregando cliente…",
+            "errorTitle": "Não foi possível carregar o cliente",
+            "errorFallback": "Tente novamente em instantes.",
+            "tabs": {
+                "details": "Detalhes",
+                "requests": "Pedidos"
+            },
+            "header": {
+                "type": "Tipo",
+                "taxId": "CPF/CNPJ",
+                "email": "E-mail",
+                "phone": "Telefone",
+                "createdAt": "Cadastrado em"
+            },
+            "details": {
+                "infoTitle": "Informações",
+                "addressTitle": "Endereço",
+                "customFieldsTitle": "Campos personalizados",
+                "notesTitle": "Observações",
+                "fields": {
+                    "name": "Nome",
+                    "legalName": "Razão social",
+                    "tradeName": "Nome fantasia",
+                    "taxId": "CPF/CNPJ",
+                    "email": "E-mail",
+                    "phone": "Telefone",
+                    "dateOfBirth": "Data de nascimento",
+                    "stateRegistration": "Inscrição estadual",
+                    "municipalRegistration": "Inscrição municipal",
+                    "addressStreet": "Logradouro",
+                    "addressNumber": "Número",
+                    "addressComplement": "Complemento",
+                    "addressNeighborhood": "Bairro",
+                    "addressCity": "Cidade",
+                    "addressState": "UF",
+                    "addressPostalCode": "CEP",
+                    "addressCountry": "País"
+                },
+                "noNotes": "Sem observações.",
+                "noAddress": "Endereço não cadastrado.",
+                "noCustomFields": "Nenhum campo personalizado cadastrado para este cliente."
+            },
+            "requests": {
+                "empty": "Este cliente ainda não tem pedidos.",
+                "columns": {
+                    "number": "Pedido",
+                    "title": "Título",
+                    "stage": "Etapa",
+                    "status": "Status",
+                    "createdAt": "Criado em"
+                }
+            }
+        }
+    },
     "placeholder": {
         "requests": {
             "title": "Pedidos",
             "description": "Aqui você vai gerenciar todos os pedidos da sua empresa. Em construção."
-        },
-        "clients": {
-            "title": "Clientes",
-            "description": "Cadastro completo dos seus clientes. Em desenvolvimento."
         },
         "proposals": {
             "title": "Propostas",

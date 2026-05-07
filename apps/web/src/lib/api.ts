@@ -1,7 +1,10 @@
 import type {
     AvailableTransition,
     CancelRequestPayload,
+    ClientDetail,
+    ClientFieldValue,
     ClientListItem,
+    CreateClientPayload,
     CreateServiceRequestPayload,
     CustomFieldListItem,
     ListClientsParams,
@@ -14,8 +17,10 @@ import type {
     ServiceRequestDetail,
     ServiceRequestListItem,
     ServiceTypeListItem,
+    SetFieldValueItem,
     TaskListItem,
     TransitionStagePayload,
+    UpdateClientPayload,
     User,
 } from '@/types/domain';
 import { request } from './http';
@@ -92,6 +97,7 @@ export const requestsApi = {
                 query: {
                     stageId: params.stageId,
                     serviceTypeId: params.serviceTypeId,
+                    clientId: params.clientId,
                     assignedMembershipId: params.assignedMembershipId,
                     isCancelled: params.isCancelled,
                     limit: params.limit,
@@ -227,6 +233,120 @@ export const clientsApi = {
                     limit: params.limit,
                     skip: params.skip,
                 },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    get(companyId: string, clientId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Custom field values for a client (target=CLIENT). Same wire shape
+     *  as request field values; backend permission gate is CLIENT.VIEW. */
+    getFieldValues(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientFieldValue[]>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/field-values`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateClientPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    update(
+        companyId: string,
+        clientId: string,
+        payload: UpdateClientPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}`,
+            {
+                method: 'PATCH',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Replace-all semantics: the items array overwrites the client's
+     *  current custom field values entirely. Backend wraps in
+     *  { items: [...] } per SetClientFieldValuesDto. Permission: CLIENT.EDIT. */
+    setFieldValues(
+        companyId: string,
+        clientId: string,
+        items: SetFieldValueItem[],
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientFieldValue[]>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/field-values`,
+            {
+                method: 'PUT',
+                body: { items },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Soft-deletes the client (`isActive=false`). Idempotent backend-side:
+     *  re-deactivate of an already-inactive client returns 200 silently
+     *  without changes. Permission: CLIENT.DELETE. */
+    deactivate(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/deactivate`,
+            {
+                method: 'POST',
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Restores a deactivated client (`isActive=true`). Idempotent
+     *  backend-side. Permission: CLIENT.EDIT. */
+    reactivate(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/reactivate`,
+            {
+                method: 'POST',
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

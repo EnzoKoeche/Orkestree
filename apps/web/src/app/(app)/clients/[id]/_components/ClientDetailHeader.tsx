@@ -1,8 +1,10 @@
 import { Building2, User } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { DateCell } from '@/components/ui/DateCell';
+import { formatTaxId } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { ClientDetail, ClientType } from '@/types/domain';
+import type { ClientDetail } from '@/types/domain';
+import { EditClientButton } from './EditClientButton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ClientDetailHeader — top of the client detail page.
@@ -17,16 +19,6 @@ import type { ClientDetail, ClientType } from '@/types/domain';
 //   2. Number + type icon + isActive badge inline above — secondary.
 //   3. Info row — taxId / email / phone / createdAt (text-sm muted).
 // ─────────────────────────────────────────────────────────────────────────────
-
-function formatTaxId(raw: string): string {
-    if (raw.length === 11) {
-        return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
-    }
-    if (raw.length === 14) {
-        return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}/${raw.slice(8, 12)}-${raw.slice(12)}`;
-    }
-    return raw;
-}
 
 export async function ClientDetailHeader({ client }: { client: ClientDetail }) {
     const t = await getTranslations('clients');
@@ -86,7 +78,7 @@ export async function ClientDetailHeader({ client }: { client: ClientDetail }) {
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {/* EditClientButton placeholder — Commit C */}
+                <EditClientButton client={client} />
                 {/* DeactivateClientButton / ReactivateClientButton placeholder — Commit D */}
             </div>
         </header>

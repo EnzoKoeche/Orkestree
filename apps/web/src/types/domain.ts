@@ -363,6 +363,48 @@ export interface ClientDetail extends ClientListItem {
     addressCountry: string | null;
 }
 
+// ── Create / Update Client payloads ─────────────────────────────────────────
+//
+// CreateClientPayload mirrors backend's CreateClientDto (28 campos). Service
+// computes the denormalized `name` (PF: dto.name; PJ: dto.tradeName ??
+// dto.legalName), so frontend doesn't send a redundant `name` field.
+//
+// UpdateClientPayload omits `type` (immutable post-creation, enforced
+// server-side) and `fieldValues` (separate PUT /:id/field-values endpoint).
+
+export interface CreateClientPayload {
+    type: ClientType;
+    // PF
+    name?: string;
+    dateOfBirth?: string;
+    // PJ
+    legalName?: string;
+    tradeName?: string;
+    stateRegistration?: string;
+    municipalRegistration?: string;
+    // Document + contact
+    taxId?: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+    // Address
+    addressStreet?: string;
+    addressNumber?: string;
+    addressComplement?: string;
+    addressNeighborhood?: string;
+    addressCity?: string;
+    addressState?: string;
+    addressPostalCode?: string;
+    addressCountry?: string;
+    // Custom field values (only on create — edit uses separate endpoint)
+    fieldValues?: SetFieldValueItem[];
+}
+
+export type UpdateClientPayload = Omit<
+    CreateClientPayload,
+    'type' | 'fieldValues'
+>;
+
 // ── Client field values (GET /clients/:id/field-values) ─────────────────────
 //
 // Wire shape is identical to RequestFieldValue (same typed-columns model on

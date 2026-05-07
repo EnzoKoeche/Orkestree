@@ -14,11 +14,13 @@ import {
 } from '@/components/ui/table';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { clientsApi } from '@/lib/api';
+import { formatTaxId } from '@/lib/format';
 import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import { cn } from '@/lib/utils';
 import type { ClientListItem, ClientType } from '@/types/domain';
 import { ClientsToolbar } from './_components/ClientsToolbar';
+import { NewClientButton } from './_components/NewClientButton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clientes page — Server Component.
@@ -161,6 +163,7 @@ export default async function ClientsPage({
                                             icon={Users}
                                             title={t('empty.noClients.title')}
                                             description={t('empty.noClients.description')}
+                                            action={<NewClientButton />}
                                         />
                                     ) : showNoResults ? (
                                         <EmptyTable
@@ -233,9 +236,12 @@ export default async function ClientsPage({
 async function Header() {
     const t = await getTranslations('clients');
     return (
-        <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-1">
+                <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
+                <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+            </div>
+            <NewClientButton />
         </div>
     );
 }
@@ -295,20 +301,3 @@ function ClientStatusBadge({
     );
 }
 
-// ── taxId formatter (display only) ──────────────────────────────────────────
-//
-// Backend stores raw digits (^\d{11}$|^\d{14}$ DTO regex). Display formats:
-//   PF  (11 digits): XXX.XXX.XXX-XX
-//   PJ  (14 digits): XX.XXX.XXX/XXXX-XX
-// Anything else (length mismatch from a hypothetical bad row) is rendered
-// as-is — defensive, doesn't crash if data drifts.
-
-function formatTaxId(raw: string): string {
-    if (raw.length === 11) {
-        return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
-    }
-    if (raw.length === 14) {
-        return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}/${raw.slice(8, 12)}-${raw.slice(12)}`;
-    }
-    return raw;
-}

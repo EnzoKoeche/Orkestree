@@ -4,6 +4,7 @@ import type {
     ClientDetail,
     ClientFieldValue,
     ClientListItem,
+    CreateClientPayload,
     CreateServiceRequestPayload,
     CustomFieldListItem,
     ListClientsParams,
@@ -16,8 +17,10 @@ import type {
     ServiceRequestDetail,
     ServiceRequestListItem,
     ServiceTypeListItem,
+    SetFieldValueItem,
     TaskListItem,
     TransitionStagePayload,
+    UpdateClientPayload,
     User,
 } from '@/types/domain';
 import { request } from './http';
@@ -256,6 +259,59 @@ export const clientsApi = {
         return request<ClientFieldValue[]>(
             `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/field-values`,
             {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateClientPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    update(
+        companyId: string,
+        clientId: string,
+        payload: UpdateClientPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}`,
+            {
+                method: 'PATCH',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Replace-all semantics: the items array overwrites the client's
+     *  current custom field values entirely. Backend wraps in
+     *  { items: [...] } per SetClientFieldValuesDto. Permission: CLIENT.EDIT. */
+    setFieldValues(
+        companyId: string,
+        clientId: string,
+        items: SetFieldValueItem[],
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientFieldValue[]>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/field-values`,
+            {
+                method: 'PUT',
+                body: { items },
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTranslations } from 'next-intl/server';
+import { formatTaxId } from '@/lib/format';
 import type {
     ClientDetail,
     ClientFieldValue,
@@ -230,12 +231,3 @@ function formatDate(iso: string | null, withTime = false): string | null {
     });
 }
 
-function formatTaxId(raw: string): string {
-    if (raw.length === 11) {
-        return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
-    }
-    if (raw.length === 14) {
-        return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}/${raw.slice(8, 12)}-${raw.slice(12)}`;
-    }
-    return raw;
-}

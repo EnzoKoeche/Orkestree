@@ -1,12 +1,17 @@
-import type { PrismaService } from '../../src/prisma/prisma.service';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // PrismaService mock factory.
 //
-// Returns a Partial<PrismaService> where every method used by services under
+// Returns a permissive object where every method used by services under
 // test is a Jest mock fn. Each spec extends this with the specific
 // per-method behavior it cares about (mockResolvedValue / mockRejectedValue /
 // mockImplementation), keeping spec setup terse.
+//
+// We deliberately do NOT type this as `jest.Mocked<Partial<PrismaService>>`:
+// Prisma's generated method signatures (e.g. `count`) return branded
+// PrismaPromise types whose intersection with jest.Mock breaks TypeScript's
+// inference (`.mockResolvedValue` becomes inaccessible). The factory exposes
+// `MockedPrismaService` with `[model: string]: ModelMockMethods` so specs can
+// chain `.mockResolvedValue` directly on `prisma.user.findUnique`.
 //
 // $transaction handling: callers pass either an array (Promise.all-shaped
 // batch) or a callback that receives a tx client. The mock supports both
@@ -17,14 +22,28 @@ import type { PrismaService } from '../../src/prisma/prisma.service';
 // specs that care about the raw response override per-call.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type MockedPrismaService = jest.Mocked<Partial<PrismaService>> & {
+interface ModelMockMethods {
+    findFirst: jest.Mock;
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
+}
+
+export interface MockedPrismaService {
+    $transaction: jest.Mock;
+    $queryRaw: jest.Mock;
+    $executeRaw: jest.Mock;
+    // `any` on the model index signature so callers can chain
+    // `.mockResolvedValue` on `prisma.user.findUnique` without TypeScript
+    // narrowing to a union that lacks the jest.Mock surface.
     [model: string]: any;
-};
+}
 
 export function createMockPrisma(): MockedPrismaService {
-    const tx: any = {};
-
-    const modelMethods = (): any => ({
+    const modelMethods = (): ModelMockMethods => ({
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -55,7 +74,7 @@ export function createMockPrisma(): MockedPrismaService {
         'userPermissionOverride',
     ];
 
-    const prisma: any = {
+    const prisma: MockedPrismaService = {
         $transaction: jest.fn(async (arg: any) => {
             if (typeof arg === 'function') {
                 return arg(prisma);
@@ -71,8 +90,5 @@ export function createMockPrisma(): MockedPrismaService {
         prisma[name] = modelMethods();
     }
 
-    // Wire tx alias for callbacks that destructure tx-only methods.
-    Object.assign(tx, prisma);
-
-    return prisma as MockedPrismaService;
+    return prisma;
 }

@@ -235,7 +235,9 @@
                 "stageInitial": "Pedido criado em {to}",
                 "stageMoved": "Movido de {from} para {to}",
                 "assigned": "{member} foi atribuído",
-                "by": "por {actor}"
+                "by": "por {actor}",
+                "cancelled": "Pedido cancelado",
+                "cancelledReason": "Motivo: {reason}"
             }
         }
     },

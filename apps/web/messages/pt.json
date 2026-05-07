@@ -88,6 +88,22 @@
         "errorTitle": "Não foi possível carregar os clientes",
         "errorFallback": "Tente novamente em instantes.",
         "noContact": "Sem contato",
+        "deactivate": {
+            "trigger": "Desativar",
+            "title": "Desativar {name}?",
+            "description": "Cliente desativado não aparece em buscas e não pode receber novos pedidos. Você pode reativar depois se mudar de ideia.",
+            "confirm": "Desativar",
+            "cancel": "Manter ativo",
+            "submitting": "Desativando…",
+            "success": "Cliente desativado.",
+            "error": "Não foi possível desativar o cliente."
+        },
+        "reactivate": {
+            "trigger": "Reativar",
+            "submitting": "Reativando…",
+            "success": "Cliente reativado.",
+            "error": "Não foi possível reativar o cliente."
+        },
         "form": {
             "createTitle": "Novo cliente",
             "editTitle": "Editar cliente",

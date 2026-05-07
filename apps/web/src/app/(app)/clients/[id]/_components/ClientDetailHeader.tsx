@@ -4,7 +4,9 @@ import { DateCell } from '@/components/ui/DateCell';
 import { formatTaxId } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ClientDetail } from '@/types/domain';
+import { DeactivateClientButton } from './DeactivateClientButton';
 import { EditClientButton } from './EditClientButton';
+import { ReactivateClientButton } from './ReactivateClientButton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ClientDetailHeader — top of the client detail page.
@@ -79,7 +81,11 @@ export async function ClientDetailHeader({ client }: { client: ClientDetail }) {
 
             <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <EditClientButton client={client} />
-                {/* DeactivateClientButton / ReactivateClientButton placeholder — Commit D */}
+                {client.isActive ? (
+                    <DeactivateClientButton client={client} />
+                ) : (
+                    <ReactivateClientButton client={client} />
+                )}
             </div>
         </header>
     );

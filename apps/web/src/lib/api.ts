@@ -317,6 +317,41 @@ export const clientsApi = {
             },
         );
     },
+
+    /** Soft-deletes the client (`isActive=false`). Idempotent backend-side:
+     *  re-deactivate of an already-inactive client returns 200 silently
+     *  without changes. Permission: CLIENT.DELETE. */
+    deactivate(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/deactivate`,
+            {
+                method: 'POST',
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Restores a deactivated client (`isActive=true`). Idempotent
+     *  backend-side. Permission: CLIENT.EDIT. */
+    reactivate(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/reactivate`,
+            {
+                method: 'POST',
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
 };
 
 // ── Service Types ───────────────────────────────────────────────────────────

@@ -42,14 +42,57 @@
         "noClient": "Sem cliente",
         "stage": "Etapa: {name}"
     },
+    "clients": {
+        "title": "Clientes",
+        "subtitle": "Cadastro de pessoas físicas e jurídicas que solicitam serviços.",
+        "newClient": "Novo cliente",
+        "columns": {
+            "number": "Cliente",
+            "name": "Nome",
+            "type": "Tipo",
+            "taxId": "CPF/CNPJ",
+            "contact": "Contato",
+            "status": "Situação",
+            "createdAt": "Cadastrado em"
+        },
+        "type": {
+            "individual": "Pessoa física",
+            "business": "Pessoa jurídica",
+            "individualShort": "PF",
+            "businessShort": "PJ"
+        },
+        "status": {
+            "active": "Ativo",
+            "inactive": "Inativo"
+        },
+        "filters": {
+            "typeAll": "Todos os tipos",
+            "typeIndividual": "Pessoa física",
+            "typeBusiness": "Pessoa jurídica",
+            "statusActive": "Ativos",
+            "statusInactive": "Inativos",
+            "statusAll": "Todos",
+            "searchPlaceholder": "Buscar por nome ou CPF/CNPJ…",
+            "clear": "Limpar filtros"
+        },
+        "empty": {
+            "noClients": {
+                "title": "Nenhum cliente cadastrado ainda",
+                "description": "Cadastre o primeiro cliente para começar a registrar pedidos."
+            },
+            "noResults": {
+                "title": "Nenhum cliente encontrado",
+                "description": "Tente ajustar os filtros ou limpar a busca para ver mais resultados."
+            }
+        },
+        "errorTitle": "Não foi possível carregar os clientes",
+        "errorFallback": "Tente novamente em instantes.",
+        "noContact": "Sem contato"
+    },
     "placeholder": {
         "requests": {
             "title": "Pedidos",
             "description": "Aqui você vai gerenciar todos os pedidos da sua empresa. Em construção."
-        },
-        "clients": {
-            "title": "Clientes",
-            "description": "Cadastro completo dos seus clientes. Em desenvolvimento."
         },
         "proposals": {
             "title": "Propostas",

@@ -289,9 +289,22 @@ export function ClientForm({
                                         (field.value as string) ?? '',
                                         currentType,
                                     )}
-                                    onChange={(e) =>
-                                        field.onChange(e.target.value.replace(/\D/g, ''))
-                                    }
+                                    onChange={(e) => {
+                                        field.onChange(
+                                            e.target.value.replace(/\D/g, ''),
+                                        );
+                                        // Inline safeParse on submit means RHF
+                                        // doesn't auto-revalidate on field
+                                        // change. Without this clear, an error
+                                        // from a previous submit (e.g. user
+                                        // tried 13 digits) persists even after
+                                        // they finish typing the 14th — the
+                                        // display reads "valid CNPJ but error
+                                        // says invalid" until they re-submit.
+                                        if (form.formState.errors.taxId) {
+                                            form.clearErrors('taxId');
+                                        }
+                                    }}
                                     disabled={submitting}
                                     className="tabular-nums"
                                 />

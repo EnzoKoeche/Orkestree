@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { DateCell } from '@/components/ui/DateCell';
 import type {
     CustomFieldType,
     RequestFieldValue,
@@ -33,6 +34,42 @@ export async function DetailsTab({
 
     return (
         <div className="space-y-8 rounded-md border bg-card p-6">
+            {request.isCancelled ? (
+                <section
+                    className="rounded-md border border-red-200 bg-red-50 p-4"
+                    aria-label={t('cancelledTitle')}
+                >
+                    <h2 className="text-sm font-medium uppercase tracking-wide text-red-700">
+                        {t('cancelledTitle')}
+                    </h2>
+                    <dl className="mt-2 flex flex-col gap-2">
+                        <div className="flex flex-col gap-0.5">
+                            <dt className="text-xs uppercase tracking-wide text-red-700/70">
+                                {t('cancelledReasonLabel')}
+                            </dt>
+                            <dd className="text-sm text-red-900">
+                                {request.cancellationReason?.trim() || (
+                                    <span className="text-red-700/70">
+                                        {t('cancelledNoReason')}
+                                    </span>
+                                )}
+                            </dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                            <dt className="text-xs uppercase tracking-wide text-red-700/70">
+                                {t('cancelledAtLabel')}
+                            </dt>
+                            <dd>
+                                <DateCell
+                                    iso={request.updatedAt}
+                                    className="text-sm text-red-900 tabular-nums"
+                                />
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+            ) : null}
+
             <section>
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     {t('descriptionTitle')}

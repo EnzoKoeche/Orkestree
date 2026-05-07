@@ -6,6 +6,7 @@ import type {
     MembershipRef,
     ServiceRequestDetail,
 } from '@/types/domain';
+import { CancelRequestButton } from './CancelRequestButton';
 import { TransitionMenu } from './TransitionMenu';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,7 +91,10 @@ export async function RequestDetailHeader({
                     isCancelled={request.isCancelled}
                     availableTransitions={availableTransitions}
                 />
-                {/* CancelButton placeholder — Commit D */}
+                <CancelRequestButton
+                    requestId={request.id}
+                    isCancelled={request.isCancelled}
+                />
             </div>
         </header>
     );

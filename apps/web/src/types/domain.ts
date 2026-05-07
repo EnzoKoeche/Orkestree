@@ -389,3 +389,10 @@ export interface TransitionStagePayload {
     toStageId: string;
     note?: string;
 }
+
+export interface CancelRequestPayload {
+    /** Optional free-text reason persisted as request.cancellationReason
+     *  and surfaced in the detail page's Cancelamento section. Max 1024
+     *  chars per backend DTO. */
+    reason?: string;
+}

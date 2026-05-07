@@ -109,6 +109,21 @@
             "error": "Não foi possível mover o pedido.",
             "approvalRequired": "Você não tem permissão para aprovar essa transição."
         },
+        "cancel": {
+            "trigger": "Cancelar",
+            "alreadyCancelledTooltip": "Pedido já cancelado",
+            "title": "Cancelar pedido?",
+            "warning": "Esta ação não pode ser desfeita. O pedido será marcado como cancelado e não poderá mais ter etapas alteradas.",
+            "reasonLabel": "Motivo",
+            "reasonOptional": "(opcional)",
+            "reasonPlaceholder": "Por que esse pedido está sendo cancelado?",
+            "reasonTooLong": "Motivo muito longo (máx. 1024 caracteres).",
+            "submitting": "Cancelando…",
+            "confirmLabel": "Cancelar pedido",
+            "keepLabel": "Manter pedido",
+            "success": "Pedido cancelado.",
+            "error": "Não foi possível cancelar o pedido."
+        },
         "create": {
             "trigger": "Novo pedido",
             "title": "Novo pedido",
@@ -184,7 +199,11 @@
                 "noDescription": "Sem descrição.",
                 "fieldsTitle": "Campos personalizados",
                 "noFields": "Nenhum campo personalizado para este tipo de pedido.",
-                "noValue": "—"
+                "noValue": "—",
+                "cancelledTitle": "Cancelamento",
+                "cancelledReasonLabel": "Motivo",
+                "cancelledNoReason": "Sem motivo registrado.",
+                "cancelledAtLabel": "Data"
             },
             "workflow": {
                 "currentStageTitle": "Etapa atual",

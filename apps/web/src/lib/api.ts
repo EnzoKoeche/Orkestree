@@ -1,5 +1,6 @@
 import type {
     AvailableTransition,
+    CancelRequestPayload,
     ClientListItem,
     CreateServiceRequestPayload,
     CustomFieldListItem,
@@ -174,6 +175,28 @@ export const requestsApi = {
     ) {
         return request<void>(
             `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/transition`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /**
+     * Cancels a request. Idempotent backend-side: re-cancel of an already-
+     * cancelled request returns 200 silently without changes. Permission
+     * gate: REQUEST.EDIT.
+     */
+    cancel(
+        companyId: string,
+        requestId: string,
+        payload: CancelRequestPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<void>(
+            `/companies/${encodeURIComponent(companyId)}/requests/${encodeURIComponent(requestId)}/cancel`,
             {
                 method: 'POST',
                 body: payload,

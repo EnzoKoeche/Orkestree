@@ -411,6 +411,7 @@ export class ServiceRequestsService {
 
         if (query.stageId !== undefined) where.currentStageId = query.stageId;
         if (query.serviceTypeId !== undefined) where.serviceTypeId = query.serviceTypeId;
+        if (query.clientId !== undefined) where.clientId = query.clientId;
         if (query.assignedMembershipId !== undefined) {
             where.assignedMembershipId = query.assignedMembershipId;
         }

@@ -10,6 +10,14 @@ export class ListServiceRequestsDto {
     @IsString()
     serviceTypeId?: string;
 
+    // Filter requests by their associated client. Used by the client-detail
+    // "Pedidos" tab to surface every request a given client has open or
+    // closed. Tenant scoping (companyId) is applied alongside this filter
+    // server-side, so a client id from another tenant resolves to zero rows.
+    @IsOptional()
+    @IsString()
+    clientId?: string;
+
     @IsOptional()
     @IsString()
     assignedMembershipId?: string;

@@ -144,6 +144,9 @@ export interface ServiceRequestListItem {
 export interface ListServiceRequestsParams {
     stageId?: string;
     serviceTypeId?: string;
+    /** Used by client-detail "Pedidos" tab to surface a single client's
+     *  requests. Tenant scoping is applied alongside server-side. */
+    clientId?: string;
     assignedMembershipId?: string;
     isCancelled?: boolean;
     limit?: number;

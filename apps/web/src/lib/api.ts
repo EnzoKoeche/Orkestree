@@ -92,6 +92,7 @@ export const requestsApi = {
                 query: {
                     stageId: params.stageId,
                     serviceTypeId: params.serviceTypeId,
+                    clientId: params.clientId,
                     assignedMembershipId: params.assignedMembershipId,
                     isCancelled: params.isCancelled,
                     limit: params.limit,

@@ -63,6 +63,7 @@ export function createMockPrisma(): MockedPrismaService {
         'workflow',
         'workflowStage',
         'stageTransition',
+        'stageAssigneeRule',
         'requestStageHistory',
         'requestAssignment',
         'requestFieldValue',

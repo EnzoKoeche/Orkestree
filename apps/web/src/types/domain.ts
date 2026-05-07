@@ -339,6 +339,53 @@ export interface ListClientsParams {
     skip?: number;
 }
 
+// ── Client detail (mirror of CLIENT_DETAIL_SELECT) ──────────────────────────
+//
+// Extends list shape with notes, denormalized BUSINESS fields (legalName,
+// tradeName, stateRegistration, municipalRegistration), INDIVIDUAL-only
+// dateOfBirth, and the full address block. All of the additional fields are
+// nullable because they're optional at create time.
+
+export interface ClientDetail extends ClientListItem {
+    notes: string | null;
+    legalName: string | null;
+    tradeName: string | null;
+    dateOfBirth: string | null;
+    stateRegistration: string | null;
+    municipalRegistration: string | null;
+    addressStreet: string | null;
+    addressNumber: string | null;
+    addressComplement: string | null;
+    addressNeighborhood: string | null;
+    addressCity: string | null;
+    addressState: string | null;
+    addressPostalCode: string | null;
+    addressCountry: string | null;
+}
+
+// ── Client field values (GET /clients/:id/field-values) ─────────────────────
+//
+// Wire shape is identical to RequestFieldValue (same typed-columns model on
+// the backend). Kept as a distinct interface for domain clarity — values
+// returned here belong to a Client, not a ServiceRequest, even if the
+// columns coincide.
+
+export interface ClientFieldValue {
+    id: string;
+    customFieldId: string;
+    valueText: string | null;
+    valueNumber: string | null;
+    valueBoolean: boolean | null;
+    valueDate: string | null;
+    valueMulti: string[];
+    customField: {
+        id: string;
+        code: string;
+        label: string;
+        type: CustomFieldType;
+    };
+}
+
 // ── Service Types (mirror of GET /companies/:companyId/config/service-types) ─
 //
 // Returns full LIST_SELECT projection — workflowId is exposed because some

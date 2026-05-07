@@ -87,7 +87,62 @@
         },
         "errorTitle": "Não foi possível carregar os clientes",
         "errorFallback": "Tente novamente em instantes.",
-        "noContact": "Sem contato"
+        "noContact": "Sem contato",
+        "detail": {
+            "back": "Voltar para clientes",
+            "loading": "Carregando cliente…",
+            "errorTitle": "Não foi possível carregar o cliente",
+            "errorFallback": "Tente novamente em instantes.",
+            "tabs": {
+                "details": "Detalhes",
+                "requests": "Pedidos"
+            },
+            "header": {
+                "type": "Tipo",
+                "taxId": "CPF/CNPJ",
+                "email": "E-mail",
+                "phone": "Telefone",
+                "createdAt": "Cadastrado em"
+            },
+            "details": {
+                "infoTitle": "Informações",
+                "addressTitle": "Endereço",
+                "customFieldsTitle": "Campos personalizados",
+                "notesTitle": "Observações",
+                "fields": {
+                    "name": "Nome",
+                    "legalName": "Razão social",
+                    "tradeName": "Nome fantasia",
+                    "taxId": "CPF/CNPJ",
+                    "email": "E-mail",
+                    "phone": "Telefone",
+                    "dateOfBirth": "Data de nascimento",
+                    "stateRegistration": "Inscrição estadual",
+                    "municipalRegistration": "Inscrição municipal",
+                    "addressStreet": "Logradouro",
+                    "addressNumber": "Número",
+                    "addressComplement": "Complemento",
+                    "addressNeighborhood": "Bairro",
+                    "addressCity": "Cidade",
+                    "addressState": "UF",
+                    "addressPostalCode": "CEP",
+                    "addressCountry": "País"
+                },
+                "noNotes": "Sem observações.",
+                "noAddress": "Endereço não cadastrado.",
+                "noCustomFields": "Nenhum campo personalizado cadastrado para este cliente."
+            },
+            "requests": {
+                "empty": "Este cliente ainda não tem pedidos.",
+                "columns": {
+                    "number": "Pedido",
+                    "title": "Título",
+                    "stage": "Etapa",
+                    "status": "Status",
+                    "createdAt": "Criado em"
+                }
+            }
+        }
     },
     "placeholder": {
         "requests": {

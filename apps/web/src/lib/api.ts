@@ -1,6 +1,8 @@
 import type {
     AvailableTransition,
     CancelRequestPayload,
+    ClientDetail,
+    ClientFieldValue,
     ClientListItem,
     CreateServiceRequestPayload,
     CustomFieldListItem,
@@ -228,6 +230,32 @@ export const clientsApi = {
                     limit: params.limit,
                     skip: params.skip,
                 },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    get(companyId: string, clientId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<ClientDetail>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}`,
+            {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /** Custom field values for a client (target=CLIENT). Same wire shape
+     *  as request field values; backend permission gate is CLIENT.VIEW. */
+    getFieldValues(
+        companyId: string,
+        clientId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ClientFieldValue[]>(
+            `/companies/${encodeURIComponent(companyId)}/clients/${encodeURIComponent(clientId)}/field-values`,
+            {
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

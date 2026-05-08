@@ -8,6 +8,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { CompanyConfigModule } from './company-config/company-config.module';
+import { HealthController } from './health.controller';
 import { MembershipsModule } from './memberships/memberships.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProposalJobsModule } from './proposals/jobs/proposal-jobs.module';
@@ -91,6 +92,7 @@ function parseRedisUrl(url: string): { host: string; port: number; password?: st
         ProposalsModule,
         ProposalJobsModule,
     ],
+    controllers: [HealthController],
     providers: [
         {
             provide: APP_GUARD,

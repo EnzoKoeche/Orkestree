@@ -40,7 +40,11 @@ async function bootstrap(): Promise<void> {
         allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
-    await app.listen(process.env['PORT'] ?? 3000);
+    // Bind to 0.0.0.0 so the process accepts connections on all interfaces.
+    // Render (and most container platforms) route external traffic to a
+    // non-loopback address; defaulting Node to localhost would silently make
+    // the API unreachable.
+    await app.listen(process.env['PORT'] ?? 3000, '0.0.0.0');
 }
 
 bootstrap();

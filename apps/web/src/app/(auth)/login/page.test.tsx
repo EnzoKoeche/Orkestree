@@ -3,36 +3,28 @@ import userEvent from '@testing-library/user-event';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { authApi } from '@/lib/api';
-import { ApiError } from '@/lib/http';
 import { useSession } from '@/lib/session';
 import LoginPage from './page';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LoginPage spec — RHF + zod inline validation, success redirect, and the
-// 4-way ApiError → toast routing in the catch block (page.tsx:79-93).
+// 4-way HTTP error → toast routing in onSubmit (post-AUDIT-3).
 //
 // Strategy:
-//   - vi.mock('@/lib/api') swaps authApi.login for a vi.fn so each case
-//     drives the wire response (success, 401, 429, isNetworkError).
+//   - vi.stubGlobal('fetch', …) drives the same-origin POST /api/auth/login
+//     response per case (success, 401, 429, network error).
 //   - vi.mock('sonner') swaps the toaster so we can assert which error
 //     branch fired without a real toast container in the DOM.
 //   - vi.mock('@/lib/session') replaces useSession; the page only needs
-//     signIn here, and we assert it's called on success.
+//     signIn, and we assert it's called on success with { user }.
 //   - useRouter comes from the global setup mock — re-importing returns
 //     the same stable instance, so we assert on its push directly.
 //
 // next-intl is mocked globally as an identity translator: t('foo.bar')
 // returns the literal key 'foo.bar'. Assertions on toast args use the
-// key strings directly, which keeps the spec resilient to copy changes
-// in pt.json (a copy churn shouldn't break the routing test).
+// key strings directly, which keeps the spec resilient to copy churn in
+// pt.json.
 // ─────────────────────────────────────────────────────────────────────────────
-
-vi.mock('@/lib/api', () => ({
-    authApi: {
-        login: vi.fn(),
-    },
-}));
 
 vi.mock('sonner', () => ({
     toast: {
@@ -47,17 +39,20 @@ vi.mock('@/lib/session', () => ({
     useSession: vi.fn(),
 }));
 
-const sampleLoginResponse = {
-    accessToken: 'jwt.token.value',
-    expiresIn: '7d',
-    user: {
-        id: 'u1',
-        email: 'op@empresa.com',
-        firstName: 'Op',
-        lastName: 'Erador',
-        avatarUrl: null,
-    },
+const sampleUser = {
+    id: 'u1',
+    email: 'op@empresa.com',
+    firstName: 'Op',
+    lastName: 'Erador',
+    avatarUrl: null,
 };
+
+function makeJsonResponse(status: number, body: unknown): Response {
+    return new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
 
 describe('LoginPage', () => {
     let signIn: ReturnType<typeof vi.fn>;
@@ -81,6 +76,7 @@ describe('LoginPage', () => {
     });
 
     afterEach(() => {
+        vi.unstubAllGlobals();
         vi.clearAllMocks();
     });
 
@@ -92,7 +88,9 @@ describe('LoginPage', () => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
     });
 
-    it('empty submit shows inline errors with role=alert (no toast)', async () => {
+    it('empty submit shows inline errors with role=alert (no toast, no fetch)', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         render(<LoginPage />);
 
@@ -107,11 +105,14 @@ describe('LoginPage', () => {
 
         // Validation errors live inline — toast.error must NOT fire for them.
         expect(toast.error).not.toHaveBeenCalled();
-        expect(authApi.login).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('successful login: calls authApi.login, signIn, and router.push("/")', async () => {
-        vi.mocked(authApi.login).mockResolvedValue(sampleLoginResponse);
+    it('success: POST /api/auth/login → signIn({ user }) + router.push("/")', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(makeJsonResponse(200, { user: sampleUser, expiresIn: '7d' }));
+        vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         const router = useRouter();
         render(<LoginPage />);
@@ -120,25 +121,31 @@ describe('LoginPage', () => {
         await user.type(screen.getByLabelText(/passwordLabel/i), 'hunter2');
         await user.click(screen.getByRole('button', { name: /submit/i }));
 
-        // Email is .trim()'d before being passed to the API.
-        await waitFor(() =>
-            expect(authApi.login).toHaveBeenCalledWith('op@empresa.com', 'hunter2'),
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe('/api/auth/login');
+        expect(init.method).toBe('POST');
+        expect(init.credentials).toBe('same-origin');
+        // Email is .trim()'d before being sent.
+        expect(init.body).toBe(
+            JSON.stringify({ email: 'op@empresa.com', password: 'hunter2' }),
         );
-        expect(signIn).toHaveBeenCalledWith({
-            token: sampleLoginResponse.accessToken,
-            user: sampleLoginResponse.user,
-        });
+
+        // Response carries no token — provider receives just { user }.
+        expect(signIn).toHaveBeenCalledWith({ user: sampleUser });
         expect(router.push).toHaveBeenCalledWith('/');
         expect(toast.error).not.toHaveBeenCalled();
     });
 
-    it('ApiError 401 → toast.error("errors.invalidCredentials")', async () => {
-        vi.mocked(authApi.login).mockRejectedValue(
-            new ApiError('Unauthorized', 401, {
+    it('401 → toast.error("errors.invalidCredentials"), no signIn / no navigate', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            makeJsonResponse(401, {
                 message: 'Invalid credentials',
                 error: 'Unauthorized',
+                statusCode: 401,
             }),
         );
+        vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         render(<LoginPage />);
 
@@ -149,19 +156,18 @@ describe('LoginPage', () => {
         await waitFor(() =>
             expect(toast.error).toHaveBeenCalledWith('errors.invalidCredentials'),
         );
-        // signIn / router.push must NOT fire on auth failure.
         expect(signIn).not.toHaveBeenCalled();
     });
 
-    it('ApiError 429 → toast.error("errors.tooManyAttempts")', async () => {
-        vi.mocked(authApi.login).mockRejectedValue(
-            new ApiError(
-                'Too many requests',
-                429,
-                { message: 'Throttled', error: 'Too Many Requests' },
-                7,
-            ),
+    it('429 → toast.error("errors.tooManyAttempts")', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            makeJsonResponse(429, {
+                message: 'Throttled',
+                error: 'Too Many Requests',
+                statusCode: 429,
+            }),
         );
+        vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         render(<LoginPage />);
 
@@ -174,10 +180,8 @@ describe('LoginPage', () => {
         );
     });
 
-    it('ApiError isNetworkError (status=0) → toast.error("errors.networkError")', async () => {
-        vi.mocked(authApi.login).mockRejectedValue(
-            new ApiError('Network error', 0, null),
-        );
+    it('fetch rejects (network down) → toast.error("errors.networkError")', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network down')));
         const user = userEvent.setup();
         render(<LoginPage />);
 

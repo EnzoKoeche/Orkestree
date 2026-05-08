@@ -1,84 +1,44 @@
-import type { Session } from '@/types/domain';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HTTP client — single source of truth for the @orkestree/api transport.
 //
-// Owns: base URL, Authorization header (read from localStorage-backed
-// session), error normalization (typed ApiError), and the pair of helpers
-// that read/write the persistent session.
+// Owns: base URL resolution, error normalization (typed ApiError), and a
+// helper pair for the active-workspace cookie+localStorage slot.
+//
+// Post-AUDIT-3 transport split:
+//   - Client-side calls go through /api/proxy/* (same-origin Next Route
+//     Handler). The browser ships the HttpOnly orkestree_session cookie
+//     automatically; the proxy translates it into Authorization on the
+//     upstream backend call. JS never touches the JWT.
+//   - Server Components call the backend directly via NEXT_PUBLIC_API_URL,
+//     pulling the JWT through `tokenOverride` from lib/server-session.
+//     They have a JWT already and a same-origin proxy hop would just add
+//     latency.
 //
 // Intentionally framework-free: no React, no SWR, no React Query. Each page
 // composes this via lib/api.ts, which means swapping out a data fetcher
 // later doesn't ripple into endpoints.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SESSION_KEY = 'orkestree.session.v1';
-const SESSION_COOKIE = 'orkestree_session';
 const ACTIVE_COMPANY_KEY = 'orkestree.active_company.v1';
 const ACTIVE_COMPANY_COOKIE = 'orkestree_active_company';
 
-// Cookie max-age aligned to the API's JWT_EXPIRES_IN (7d) — keeps the
-// middleware gate consistent with what the server will actually accept.
-const SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
-
-// ── Persistent session helpers ──────────────────────────────────────────────
-//
-// Phase 5 SECURITY follow-up: the cookie is intentionally NOT HttpOnly so the
-// client-side useEffect bootstrap can hydrate the SessionProvider in one tick
-// without an extra round-trip. This trades XSS resistance for simplicity.
-// Before the pilot, migrate to a Route Handler that mints an HttpOnly cookie
-// server-side and have the SessionProvider read /api/me to hydrate. See the
-// Notion follow-up filed in "🎨 Direção de Produto e Design".
-
-export function readStoredSession(): Session | null {
-    if (typeof window === 'undefined') return null;
-    try {
-        const raw = window.localStorage.getItem(SESSION_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as Session;
-        if (
-            !parsed ||
-            typeof parsed.token !== 'string' ||
-            !parsed.user ||
-            typeof parsed.user.id !== 'string' ||
-            typeof parsed.user.email !== 'string'
-        ) {
-            return null;
-        }
-        return parsed;
-    } catch {
-        return null;
-    }
-}
-
-export function writeStoredSession(s: Session): void {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    document.cookie = [
-        `${SESSION_COOKIE}=${encodeURIComponent(s.token)}`,
-        'path=/',
-        'SameSite=Lax',
-        `max-age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
-    ].join('; ');
-}
-
-export function clearStoredSession(): void {
-    if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(SESSION_KEY);
-    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0`;
-}
+// Active-company cookie is kept aligned with the JWT's 7d window so the
+// middleware sees both expire together — no half-state where the operator
+// is "logged in but workspace forgotten".
+const ACTIVE_COMPANY_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 // ── Active company persistence ──────────────────────────────────────────────
 //
-// The active workspace lives OUTSIDE the persisted Session so a memberships
-// refresh never invalidates the JWT shape. Only the company id is stored
-// here; the full Membership object is hydrated on every load via
+// The active workspace lives OUTSIDE the Session shape so a memberships
+// refresh never invalidates the user identity. Only the company id is
+// stored here; the full Membership object is hydrated on every load via
 // /memberships/me, then matched to this id.
 //
 // Dual-write: localStorage for client SessionProvider hydration,
 // orkestree_active_company cookie for Server Components (which can't read
-// localStorage). Server Components pull the id via lib/server-session.ts
-// and pair it with the JWT cookie to scope tenant-aware fetches.
+// localStorage). Cookie is intentionally NON-HttpOnly — it carries no
+// secret, just a public id, and same-tab JS reads it during workspace
+// switching.
 
 export function readStoredActiveCompanyId(): string | null {
     if (typeof window === 'undefined') return null;
@@ -97,7 +57,7 @@ export function writeStoredActiveCompanyId(companyId: string): void {
         `${ACTIVE_COMPANY_COOKIE}=${encodeURIComponent(companyId)}`,
         'path=/',
         'SameSite=Lax',
-        `max-age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
+        `max-age=${ACTIVE_COMPANY_COOKIE_MAX_AGE_SECONDS}`,
     ].join('; ');
 }
 
@@ -169,19 +129,43 @@ export interface RequestOptions {
     body?: unknown;
     /** Querystring params — undefined / null / "" entries are dropped. */
     query?: Record<string, string | number | boolean | undefined | null>;
-    /** Override the Authorization token (used by the sign-in probe). */
+    /**
+     * Server Components pass the JWT pulled from lib/server-session here.
+     * When present, the request bypasses /api/proxy and goes straight to
+     * the backend. Client callers leave this undefined; the proxy handles
+     * cookie → Authorization translation server-side.
+     */
     tokenOverride?: string;
-    /** Skip the Authorization header altogether (e.g. /auth/login). */
-    skipAuth?: boolean;
     signal?: AbortSignal;
 }
 
-function getApiBase(): string {
-    const fromEnv = process.env.NEXT_PUBLIC_API_URL;
+function isServer(): boolean {
+    return typeof window === 'undefined';
+}
+
+function getServerApiBase(): string {
+    const fromEnv = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL;
     return (fromEnv && fromEnv.length > 0 ? fromEnv : 'http://localhost:3000').replace(
         /\/+$/,
         '',
     );
+}
+
+/**
+ * Resolve the absolute base URL for an outgoing request:
+ *   - Server-side (Server Components / Route Handlers): point at the backend.
+ *   - Client-side: point at our same-origin Next proxy. Browser ships the
+ *     session cookie automatically.
+ *
+ * `tokenOverride` only makes sense from the server (only place we have a
+ * raw JWT to pass). When set, we call the backend directly even though
+ * nothing else changes about the calling code.
+ */
+function resolveBase(opts: RequestOptions): string {
+    if (opts.tokenOverride !== undefined || isServer()) {
+        return getServerApiBase();
+    }
+    return '/api/proxy';
 }
 
 function buildQueryString(query?: RequestOptions['query']): string {
@@ -197,11 +181,11 @@ function buildQueryString(query?: RequestOptions['query']): string {
 /**
  * Issue a request to the API and return the parsed JSON body. Non-2xx
  * responses throw ApiError with the parsed body attached. A failed fetch
- * (network down, DNS error, CORS reject) throws ApiError with status 0
- * so callers can branch on `err.isNetworkError()` instead of catching
- * arbitrary TypeError shapes.
+ * (network down, DNS error) throws ApiError with status 0 so callers can
+ * branch on `err.isNetworkError()` instead of catching arbitrary
+ * TypeError shapes.
  *
- * `path` MUST start with `/`. The function prefixes it with the configured
+ * `path` MUST start with `/`. The function prefixes it with the resolved
  * base URL — never accepts a full URL, so a forgotten leading slash can't
  * silently leak the bearer token to a third-party origin.
  */
@@ -217,9 +201,8 @@ export async function request<T>(
         Accept: 'application/json',
     };
 
-    if (!opts.skipAuth) {
-        const token = opts.tokenOverride ?? readStoredSession()?.token ?? null;
-        if (token) headers.Authorization = `Bearer ${token}`;
+    if (opts.tokenOverride !== undefined) {
+        headers.Authorization = `Bearer ${opts.tokenOverride}`;
     }
 
     let serializedBody: string | undefined;
@@ -228,7 +211,7 @@ export async function request<T>(
         serializedBody = JSON.stringify(opts.body);
     }
 
-    const url = `${getApiBase()}${path}${buildQueryString(opts.query)}`;
+    const url = `${resolveBase(opts)}${path}${buildQueryString(opts.query)}`;
 
     let res: Response;
     try {
@@ -236,15 +219,19 @@ export async function request<T>(
             method: opts.method ?? 'GET',
             headers,
             body: serializedBody,
-            // Bearer auth, never cookies — keeps the call cors-safe.
-            credentials: 'omit',
+            // Client-side: same-origin proxy. The browser must include the
+            // HttpOnly orkestree_session cookie — `same-origin` is the
+            // narrowest credentials mode that does the right thing here.
+            // Server-side: there's no cookie jar to forward; tokenOverride
+            // is on the Authorization header.
+            credentials: opts.tokenOverride === undefined ? 'same-origin' : 'omit',
             cache: 'no-store',
             signal: opts.signal,
         });
     } catch (err) {
-        // Fetch only throws for network-level failures (no DNS, TLS abort,
-        // CORS preflight reject). Surface them with status=0 so error
-        // handlers can branch on a single shape.
+        // Fetch only throws for network-level failures (no DNS, TLS abort).
+        // Surface them with status=0 so error handlers can branch on a
+        // single shape.
         throw new ApiError(
             err instanceof Error ? err.message : 'Network error',
             0,
@@ -287,13 +274,18 @@ export async function request<T>(
 
 /**
  * Build the full URL of an API path. Used for endpoints that can't be
- * fetched as JSON (e.g. PDF downloads). The browser-level navigation must
- * still send the bearer token — this helper is paired with the
- * download-with-auth pattern that lands when PDF UI ships.
+ * fetched as JSON (e.g. PDF downloads where the browser navigates with
+ * <a href>). On the client this returns the same-origin /api/proxy URL so
+ * the cookie-derived auth flows through; on the server it returns the
+ * direct backend URL since Server Components can't initiate browser
+ * navigations anyway.
  */
 export function buildApiUrl(path: string): string {
     if (!path.startsWith('/')) {
         throw new Error(`buildApiUrl(): path must start with "/", got "${path}".`);
     }
-    return `${getApiBase()}${path}`;
+    if (isServer()) {
+        return `${getServerApiBase()}${path}`;
+    }
+    return `/api/proxy${path}`;
 }

@@ -3,24 +3,19 @@ import { cookies } from 'next/headers';
 // ─────────────────────────────────────────────────────────────────────────────
 // Server-side session reader.
 //
-// Mirrors the client-side `readStoredSession()` for Server Components / Server
-// Actions / Route Handlers. Only the JWT is exposed — the user object lives in
-// localStorage on the client and isn't replicated to the cookie. Server
-// Components that need the user identity should hit /memberships/me with the
-// returned token, which is the canonical source.
+// Reads the orkestree_session cookie for Server Components / Server Actions /
+// Route Handlers. Post-AUDIT-3 the cookie is HttpOnly — JS can't read it, but
+// `cookies()` from next/headers runs server-side and has full access. Client
+// Components that need authenticated transport go through the /api/proxy
+// Route Handler instead.
 //
-// Cookie name is intentionally duplicated from lib/http.ts (instead of
-// imported) because that file is 'use client'-bound: importing the constant
-// here would drag the rest of the http module into the server bundle and
-// confuse the bundler. The cookie name is a stable wire contract, not a
-// shared symbol — keep them in sync manually if it ever changes.
-//
-// PHASE 5 / TASK-AUDIT-3: today the cookie is non-HttpOnly (so the client-side
-// SessionProvider can hydrate without an extra round-trip). When the HttpOnly
-// migration ships, this helper continues to work unchanged — the only thing
-// that flips is the cookie's `httponly` flag at write time. That's exactly
-// why server-side data fetches read from cookies() now: the migration becomes
-// "flip a flag" instead of "rewrite every page".
+// Cookie name is intentionally hardcoded here (and mirrored in
+// app/api/auth/login/route.ts, app/api/me/route.ts, app/api/proxy/[...path]/
+// route.ts, and middleware.ts) instead of imported from a shared module
+// because some consumers are 'use client'-bound and importing across that
+// boundary would drag server-only modules into the client bundle. The cookie
+// name is a stable wire contract — keep all five spots in sync manually if
+// it ever changes.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SESSION_COOKIE = 'orkestree_session';

@@ -7,9 +7,12 @@ import { ApiError, request } from './http';
 // Strategy:
 //   - fetch is the only external surface; stub it via vi.stubGlobal so each
 //     case fully controls the wire response (status, body, headers).
-//   - localStorage is jsdom-native; clear between cases so a stored session
-//     from one test never bleeds into the auth header check of the next.
-//   - ApiError tests are pure constructors — no fetch, no DOM.
+//   - Post-AUDIT-3 the JWT lives in an HttpOnly cookie that JS can't read,
+//     so we no longer test "stored token → Authorization header" — that
+//     header is set by the /api/proxy Route Handler server-side. The
+//     client-side surface is tested for routing (/api/proxy prefix +
+//     credentials: 'same-origin'). The tokenOverride path is tested
+//     because Server Components still go through this transport.
 //
 // Paths intentionally exercised here that smokes / page tests can't reach:
 //   - the fetch-rejected branch (status=0 ApiError) — needs an artificial
@@ -18,8 +21,6 @@ import { ApiError, request } from './http';
 //   - querystring dropping for undefined/null/"" — visible only via the
 //     URL passed to fetch.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const SESSION_KEY = 'orkestree.session.v1';
 
 function makeResponse(init: {
     status: number;
@@ -47,21 +48,8 @@ describe('lib/http', () => {
         vi.unstubAllGlobals();
     });
 
-    describe('request() — auth header', () => {
-        it('adds Authorization: Bearer <token> from stored session', async () => {
-            window.localStorage.setItem(
-                SESSION_KEY,
-                JSON.stringify({
-                    token: 't0k3n',
-                    user: {
-                        id: 'u1',
-                        email: 'a@b.c',
-                        firstName: 'A',
-                        lastName: 'B',
-                        avatarUrl: null,
-                    },
-                }),
-            );
+    describe('request() — transport routing', () => {
+        it('client path hits /api/proxy with credentials: same-origin and no Authorization header', async () => {
             const fetchMock = vi
                 .fn()
                 .mockResolvedValue(makeResponse({ status: 200, body: { ok: true } }));
@@ -70,39 +58,39 @@ describe('lib/http', () => {
             await request('/foo');
 
             expect(fetchMock).toHaveBeenCalledOnce();
+            const url = fetchMock.mock.calls[0][0] as string;
             const init = fetchMock.mock.calls[0][1] as RequestInit;
             const headers = init.headers as Record<string, string>;
-            expect(headers.Authorization).toBe('Bearer t0k3n');
+
+            // Client-side default base is the same-origin Next proxy. The
+            // browser ships the HttpOnly orkestree_session cookie via the
+            // 'same-origin' credentials mode; we never set Authorization
+            // ourselves because JS has no access to the JWT.
+            expect(url).toBe('/api/proxy/foo');
+            expect(init.credentials).toBe('same-origin');
+            expect(headers.Authorization).toBeUndefined();
         });
 
-        it('skips Authorization header when skipAuth is true', async () => {
-            window.localStorage.setItem(
-                SESSION_KEY,
-                JSON.stringify({
-                    token: 't0k3n',
-                    user: {
-                        id: 'u1',
-                        email: 'a@b.c',
-                        firstName: 'A',
-                        lastName: 'B',
-                        avatarUrl: null,
-                    },
-                }),
-            );
+        it('tokenOverride path uses backend URL + Authorization header (Server Component flow)', async () => {
             const fetchMock = vi
                 .fn()
-                .mockResolvedValue(makeResponse({ status: 200, body: {} }));
+                .mockResolvedValue(makeResponse({ status: 200, body: { ok: true } }));
             vi.stubGlobal('fetch', fetchMock);
 
-            await request('/auth/login', {
-                method: 'POST',
-                body: { email: 'x', password: 'y' },
-                skipAuth: true,
-            });
+            await request('/foo', { tokenOverride: 'srv.jwt' });
 
+            const url = fetchMock.mock.calls[0][0] as string;
             const init = fetchMock.mock.calls[0][1] as RequestInit;
             const headers = init.headers as Record<string, string>;
-            expect(headers.Authorization).toBeUndefined();
+
+            // tokenOverride means we have a JWT in hand already (read from
+            // cookies() server-side). Skip the proxy entirely and call the
+            // backend directly — saves a hop and avoids forwarding cookies
+            // we already extracted.
+            expect(url).toMatch(/\/foo$/);
+            expect(url).not.toContain('/api/proxy');
+            expect(init.credentials).toBe('omit');
+            expect(headers.Authorization).toBe('Bearer srv.jwt');
         });
     });
 

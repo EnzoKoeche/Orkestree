@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { SessionProvider } from '@/lib/session';
@@ -27,6 +28,13 @@ export const metadata: Metadata = {
 // Single locale today (pt-BR), but the shape stays correct for the day a
 // second locale lands.
 export default async function RootLayout({ children }: { children: ReactNode }) {
+    // Reading any request header opts the layout (and therefore every route)
+    // into dynamic rendering, which is the precondition for Next's automatic
+    // nonce propagation to inline <script>/<style> tags in the SSR output.
+    // The middleware sets `x-nonce` per request — we don't need to forward
+    // the value manually; Next picks it up from the request scope. AUDIT-7.
+    headers().get('x-nonce');
+
     const locale = await getLocale();
     const messages = await getMessages();
 

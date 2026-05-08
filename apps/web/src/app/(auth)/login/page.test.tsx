@@ -64,6 +64,10 @@ describe('LoginPage', () => {
 
     beforeEach(() => {
         signIn = vi.fn();
+        // Cast: vi.fn()'s Mock type doesn't structurally match the
+        // specific `(s: Session) => void` signatures on
+        // SessionContextValue. tsc --noEmit catches the gap; vitest's
+        // own transform doesn't, hence the CI-only failure on first run.
         vi.mocked(useSession).mockReturnValue({
             session: null,
             loading: false,
@@ -73,7 +77,7 @@ describe('LoginPage', () => {
             signIn,
             signOut: vi.fn(),
             setActiveCompany: vi.fn(),
-        });
+        } as ReturnType<typeof useSession>);
     });
 
     afterEach(() => {

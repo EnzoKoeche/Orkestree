@@ -52,6 +52,10 @@ interface MockSessionShape {
 }
 
 function mockSession(shape: MockSessionShape): void {
+    // Cast: `?? vi.fn()` infers a bare Mock type that doesn't match the
+    // specific `(companyId: string) => void` signature on
+    // SessionContextValue. tsc --noEmit catches the gap; vitest's own
+    // transform doesn't, hence the CI-only failure on first run.
     vi.mocked(useSession).mockReturnValue({
         session: null,
         loading: false,
@@ -61,7 +65,7 @@ function mockSession(shape: MockSessionShape): void {
         signIn: vi.fn(),
         signOut: vi.fn(),
         setActiveCompany: shape.setActiveCompany ?? vi.fn(),
-    });
+    } as ReturnType<typeof useSession>);
 }
 
 describe('WorkspaceSwitcher — 4 render branches', () => {

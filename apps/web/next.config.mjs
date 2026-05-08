@@ -5,11 +5,9 @@ import createNextIntlPlugin from 'next-intl/plugin';
 // components without per-route boilerplate.
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
-// Security headers — Sessão 14 / TASK-AUDIT-4.
+// Security headers — Sessão 14 / TASK-AUDIT-4 + AUDIT-7.
 //
 // Aplicados em todas as rotas. Cobertura:
-//   - X-Frame-Options: DENY — bloqueia o site de ser carregado em iframe
-//     (clickjacking). Orkestree não é embed-friendly por design.
 //   - X-Content-Type-Options: nosniff — impede o browser de adivinhar o
 //     Content-Type de um asset (mitigação de MIME-sniffing).
 //   - Referrer-Policy: strict-origin-when-cross-origin — same-origin envia
@@ -23,11 +21,16 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
 //     (não controlamos o apex). Ativo só em produção — em dev, HSTS num
 //     localhost mistura com sites reais e é difícil de remover.
 //
-// CSP (Content-Security-Policy) NÃO está aqui — fica em TASK-AUDIT-7
-// porque exige nonces por request (middleware-based) e mais teste de
-// regressão.
+// `X-Frame-Options: DENY` foi removido em AUDIT-7 — `frame-ancestors 'none'`
+// no CSP (apps/web/middleware.ts) é o equivalente moderno e cobre todos os
+// browsers que importam. ⚠️ Durante a janela Report-Only (Fase 1, 24-48h
+// pós-merge), a CSP não enforça, então existe gap teórico de clickjacking.
+// Aceito porque (a) o app não tem fluxos sensíveis a clickjacking sem
+// re-auth, (b) janela é curta, (c) Phase 2 (1-line PR) flipa pra enforcing.
+//
+// CSP (Content-Security-Policy-Report-Only por enquanto) é emitido pelo
+// middleware Edge porque exige nonce per-request e propagação ao SSR tree.
 const securityHeaders = [
-    { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     {

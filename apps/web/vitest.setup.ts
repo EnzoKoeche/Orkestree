@@ -28,15 +28,23 @@ vi.mock('next-intl', () => ({
         values ? `${key}:${JSON.stringify(values)}` : key,
 }));
 
+// useRouter MUST return a stable reference across calls. Returning a fresh
+// object literal each invocation makes hooks that depend on router (e.g.
+// SessionProvider's useEffect([session, router])) re-fire on every render
+// → setState → re-render → infinite loop → OOM. Specs assert on
+// router.push by re-importing useRouter and reading its return value;
+// they reset call history via vi.clearAllMocks() in their own afterEach.
+const mockRouter = {
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+};
+
 vi.mock('next/navigation', () => ({
-    useRouter: () => ({
-        push: vi.fn(),
-        replace: vi.fn(),
-        refresh: vi.fn(),
-        back: vi.fn(),
-        forward: vi.fn(),
-        prefetch: vi.fn(),
-    }),
+    useRouter: () => mockRouter,
     usePathname: () => '/',
     useSearchParams: () => new URLSearchParams(),
 }));

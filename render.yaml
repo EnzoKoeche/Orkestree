@@ -50,4 +50,10 @@ services:
       - key: JWT_REFRESH_SECRET
         sync: false  # Set manualmente no dashboard
       - key: WEB_ORIGIN
-        value: "*"  # Temporário, troca depois pra URL Vercel
+        value: "https://orkestree-web.vercel.app"  # AUDIT-13: pinned to the
+        # Vercel app. NestJS `enableCors({ origin: process.env.WEB_ORIGIN })`
+        # in apps/api/src/main.ts:37 reads this. After AUDIT-3 the backend
+        # only sees server-side fetches from the Next /api/proxy route
+        # handler, so the legitimate origin is exactly one URL — wildcards
+        # would be pure attack surface. Add an array origin here if a
+        # custom domain (orkestree.com.br) lands.

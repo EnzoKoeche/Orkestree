@@ -24,17 +24,16 @@ export interface User {
 
 // ── Session (client-side persistent state) ──────────────────────────────────
 //
-// Held in localStorage (for client hydration) and in a non-HttpOnly
-// `orkestree_session` cookie (for the middleware auth gate). Phase 5 ships
-// this dual-write deliberately; before the pilot, migrate to HttpOnly via a
-// Route Handler proxy — see Notion follow-up.
+// Post-AUDIT-3: the JWT lives ONLY in the HttpOnly orkestree_session cookie,
+// minted by /api/auth/login server-side and unreadable from JavaScript.
+// `Session` carries just the user identity that the SessionProvider hydrates
+// from /api/me on mount. Authentication is implicit — if useSession() returns
+// a non-null Session, the cookie is alive; if it returns null, it isn't.
 //
-// Membership / activeCompanyId is intentionally NOT in this shape yet. The
-// /memberships/me endpoint hands back the workspace list, and Fase 6 lifts
-// the active selection into a separate "active workspace" slot. Login alone
-// has no opinion about which company the operator wants to enter.
+// Membership / activeCompanyId is intentionally NOT in this shape. The
+// /memberships/me endpoint hands back the workspace list, and the active
+// selection lives in a separate "active workspace" slot in the provider.
 export interface Session {
-    token: string;
     user: User;
 }
 

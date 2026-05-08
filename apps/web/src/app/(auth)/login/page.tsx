@@ -13,9 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authApi } from '@/lib/api';
-import { ApiError } from '@/lib/http';
 import { useSession } from '@/lib/session';
+import type { User } from '@/types/domain';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Login page
@@ -29,9 +28,9 @@ import { useSession } from '@/lib/session';
 //   - Client (zod + react-hook-form): inline below the input that failed,
 //     never via toast. Validation errors are about the user's INPUT, so
 //     they belong next to the input.
-//   - Remote (ApiError from authApi.login): always via sonner toast. Toast
-//     surfaces are short-lived, dismissible, and keep the operator's
-//     position in the form so they can correct and retry.
+//   - Remote (HTTP error from /api/auth/login Route Handler): always via
+//     sonner toast. Toast surfaces are short-lived, dismissible, and keep
+//     the operator's position in the form so they can correct and retry.
 //
 // Loading state: the button label flips to "Entrando…" with a spinner
 // (Loader2 animate-spin). Inputs and submit go disabled. aria-busy on the
@@ -69,33 +68,52 @@ export default function LoginPage() {
 
     async function onSubmit(values: FormValues) {
         setSubmitting(true);
+        // POST through our same-origin Route Handler so the JWT lands in
+        // an HttpOnly cookie server-side. The handler's response body
+        // carries only { user } — JS never touches the token.
+        let res: Response;
         try {
-            const result = await authApi.login(values.email.trim(), values.password);
-            signIn({ token: result.accessToken, user: result.user });
-            router.push('/');
-        } catch (err) {
+            res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ email: values.email.trim(), password: values.password }),
+                credentials: 'same-origin',
+                cache: 'no-store',
+            });
+        } catch {
             setSubmitting(false);
-            if (err instanceof ApiError) {
-                if (err.isUnauthorized()) {
-                    toast.error(t('errors.invalidCredentials'));
-                } else if (err.isThrottled()) {
-                    toast.error(t('errors.tooManyAttempts'));
-                } else if (err.isServerError()) {
-                    toast.error(t('errors.serverError'));
-                } else if (err.isNetworkError()) {
-                    toast.error(t('errors.networkError'));
-                } else {
-                    // Other 4xx — surface server-provided message if present,
-                    // otherwise fall back to the generic server-error copy
-                    // (still humane, never raw HTTP jargon).
-                    const message = err.toUserMessage();
-                    toast.error(message || t('errors.serverError'));
-                }
-            } else {
-                // Should not happen — request() funnels everything through
-                // ApiError. Treat as network for the user.
-                toast.error(t('errors.networkError'));
+            toast.error(t('errors.networkError'));
+            return;
+        }
+
+        if (res.ok) {
+            const data = (await res.json()) as { user: User };
+            signIn({ user: data.user });
+            router.push('/');
+            return;
+        }
+
+        // Non-2xx: branch on status the same way the previous ApiError
+        // switch did. Backend errors are forwarded verbatim by the Route
+        // Handler so `message` is a real human string when present.
+        setSubmitting(false);
+        if (res.status === 401) {
+            toast.error(t('errors.invalidCredentials'));
+        } else if (res.status === 429) {
+            toast.error(t('errors.tooManyAttempts'));
+        } else if (res.status >= 500) {
+            toast.error(t('errors.serverError'));
+        } else {
+            const text = await res.text();
+            let message = '';
+            try {
+                const parsed = JSON.parse(text) as { message?: string | string[] };
+                if (Array.isArray(parsed.message)) message = parsed.message.join('; ');
+                else if (typeof parsed.message === 'string') message = parsed.message;
+            } catch {
+                // Non-JSON body — fall through to generic copy.
             }
+            toast.error(message || t('errors.serverError'));
         }
     }
 

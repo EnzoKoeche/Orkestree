@@ -21,7 +21,6 @@ import type {
     TaskListItem,
     TransitionStagePayload,
     UpdateClientPayload,
-    User,
 } from '@/types/domain';
 import { request } from './http';
 
@@ -35,28 +34,11 @@ import { request } from './http';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Auth ────────────────────────────────────────────────────────────────────
-
-export interface LoginResponse {
-    accessToken: string;
-    /** ISO duration (e.g. "7d") — informational; the JWT itself owns expiry. */
-    expiresIn: string;
-    user: User;
-}
-
-export const authApi = {
-    /**
-     * Exchange email + password for a JWT and the user identity. `skipAuth`
-     * is critical: no bearer token exists yet, and sending an Authorization
-     * header with the empty session would 400 the throttler counting.
-     */
-    login(email: string, password: string) {
-        return request<LoginResponse>('/auth/login', {
-            method: 'POST',
-            body: { email, password },
-            skipAuth: true,
-        });
-    },
-};
+//
+// Login no longer lives here: post-AUDIT-3, the credentials POST goes to
+// the same-origin Next Route Handler /api/auth/login (which mints the
+// HttpOnly cookie server-side). The login page calls fetch() directly so
+// no JWT ever transits this module. See app/api/auth/login/route.ts.
 
 // ── Memberships ─────────────────────────────────────────────────────────────
 

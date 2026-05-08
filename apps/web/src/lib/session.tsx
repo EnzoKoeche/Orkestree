@@ -11,14 +11,11 @@ import {
     type ReactNode,
 } from 'react';
 import { membershipsApi } from '@/lib/api';
-import type { Membership, Session } from '@/types/domain';
+import type { Membership, Session, User } from '@/types/domain';
 import {
     clearStoredActiveCompanyId,
-    clearStoredSession,
     readStoredActiveCompanyId,
-    readStoredSession,
     writeStoredActiveCompanyId,
-    writeStoredSession,
 } from './http';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,8 +25,12 @@ import {
 // workspace?" on the client. Three orthogonal pieces of state, each with
 // its own lifecycle:
 //
-//   - session            : { token, user } from POST /auth/login. Persisted
-//                          in localStorage + cookie via lib/http helpers.
+//   - session            : { user } sourced from /api/me. The JWT itself
+//                          lives only in the HttpOnly orkestree_session
+//                          cookie — JavaScript never sees it. Hydration
+//                          happens via fetch on mount; before AUDIT-3 it
+//                          was a synchronous localStorage read, so the
+//                          loading state covers a small extra round trip.
 //   - memberships        : every workspace the user belongs to. Hydrated
 //                          on every session change via /memberships/me.
 //                          Not persisted — refetched on each app load so a
@@ -43,13 +44,14 @@ import {
 //                          membership falls back to the first active one
 //                          instead of crashing.
 //
-// signOut clears all three slots plus both localStorage entries plus the
-// cookie. Phase 5 cookie-strategy comment in lib/http.ts still applies.
+// signOut hits POST /api/auth/logout (server clears the HttpOnly cookie),
+// then wipes local state. The active-workspace cookie is non-HttpOnly and
+// gets cleared client-side via clearStoredActiveCompanyId.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SessionContextValue {
     session: Session | null;
-    /** True until the first localStorage read completes. */
+    /** True until the first /api/me probe completes. */
     loading: boolean;
     memberships: Membership[];
     activeMembership: Membership | null;
@@ -62,6 +64,10 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+interface MeResponse {
+    user: User;
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -71,11 +77,43 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const [activeMembership, setActiveMembership] = useState<Membership | null>(null);
     const [membershipsLoading, setMembershipsLoading] = useState(false);
 
-    // Step 1 — hydrate session from localStorage on mount.
+    // Step 1 — probe /api/me on mount. The Route Handler reads the HttpOnly
+    // cookie server-side; a 401 means "not logged in", anything else means
+    // we got an identity back. Any non-401 failure (502, network) is also
+    // treated as logged-out so we don't strand the user on a hung loader.
     useEffect(() => {
-        const stored = readStoredSession();
-        if (stored) setSession(stored);
-        setLoading(false);
+        let active = true;
+        const ac = new AbortController();
+        fetch('/api/me', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: ac.signal,
+        })
+            .then(async (res) => {
+                if (!active) return;
+                if (!res.ok) {
+                    setSession(null);
+                    return;
+                }
+                const data = (await res.json()) as MeResponse;
+                if (!data.user) {
+                    setSession(null);
+                    return;
+                }
+                setSession({ user: data.user });
+            })
+            .catch(() => {
+                if (!active) return;
+                setSession(null);
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+
+        return () => {
+            active = false;
+            ac.abort();
+        };
     }, []);
 
     // Step 2 — whenever the session changes, refresh memberships and pick
@@ -138,13 +176,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         };
     }, [session, router]);
 
+    // signIn is called by the login page right after POST /api/auth/login
+    // succeeds. The Route Handler has already minted the HttpOnly cookie
+    // server-side; we just lift the user identity into provider state so
+    // the rest of the app re-renders without a refetch.
     const signIn = useCallback((next: Session) => {
-        writeStoredSession(next);
         setSession(next);
     }, []);
 
     const signOut = useCallback(() => {
-        clearStoredSession();
+        // Fire-and-forget the cookie clear. We don't await — local state
+        // wipes immediately so the operator sees the redirect even on a
+        // slow network. Cookie clearing on the server is a hint, not a
+        // contract: even if this POST fails, the JWT becomes inert because
+        // the provider treats session=null as the source of truth and
+        // future /api/me probes will short-circuit on the same expired
+        // token.
+        void fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+        }).catch(() => {
+            // Network down on logout — local state is already cleared
+            // below and the cookie expires on its own (max-age=7d) at
+            // worst. Nothing user-actionable here.
+        });
         clearStoredActiveCompanyId();
         setSession(null);
         setMemberships([]);

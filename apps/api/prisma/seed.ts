@@ -61,12 +61,59 @@ async function hashPassword(plain: string): Promise<string> {
 }
 
 // ─── Constants the smoke test depends on ────────────────────────────────────
+const DEFAULT_EMAIL = 'owner@orkestree.dev';
+const DEFAULT_PASSWORD = 'orkestree-dev-password';
+
 const SEED_USER = {
-    email: process.env['SEED_USER_EMAIL'] ?? 'owner@orkestree.dev',
-    password: process.env['SEED_USER_PASSWORD'] ?? 'orkestree-dev-password',
+    email: process.env['SEED_USER_EMAIL'] ?? DEFAULT_EMAIL,
+    password: process.env['SEED_USER_PASSWORD'] ?? DEFAULT_PASSWORD,
     firstName: process.env['SEED_USER_FIRST_NAME'] ?? 'Olivia',
     lastName: process.env['SEED_USER_LAST_NAME'] ?? 'Owner',
 };
+
+// Production hardening — Sessão 14 (2026-05-08).
+//
+// Demos e dev rodam com defaults sem cerimônia, mas escrever credenciais
+// conhecidamente públicas (este arquivo está no GitHub) num DB de produção
+// é um pré-piloto blocker. O incidente da Sessão 14 mostrou o vetor
+// concreto: alguém com a URL da API + acesso ao repo público faz login
+// como OWNER em segundos.
+//
+// Checa env vars diretamente (não os valores resolvidos em SEED_USER) para
+// que o sinal seja exato: o operador passou credencial explícita ou caiu
+// no default? Ambos os casos (env var ausente OU igual ao default público)
+// são tratados como "default em uso".
+//
+// Não cobre o caso "dev rodando localmente apontando pra prod sem
+// NODE_ENV=production". Defesa contra esse vetor é disciplina operacional
+// + um detector de hostname PaaS no DATABASE_URL — registrado como TASK
+// separada no Notion, não bloqueia este PR.
+const passwordEnv = process.env['SEED_USER_PASSWORD'];
+const emailEnv = process.env['SEED_USER_EMAIL'];
+const usingDefaultEmail = !emailEnv || emailEnv === DEFAULT_EMAIL;
+const usingDefaultPassword = !passwordEnv || passwordEnv === DEFAULT_PASSWORD;
+
+if (process.env['NODE_ENV'] === 'production') {
+    if (usingDefaultEmail || usingDefaultPassword) {
+        console.error(
+            'Seed abortado: NODE_ENV=production mas credenciais estão no default público.',
+        );
+        console.error(
+            'Defina SEED_USER_EMAIL e SEED_USER_PASSWORD explicitamente antes de rodar este seed contra produção.',
+        );
+        console.error(
+            'Defaults estão em apps/api/prisma/seed.ts (DEFAULT_EMAIL, DEFAULT_PASSWORD) — visíveis no GitHub.',
+        );
+        process.exit(1);
+    }
+} else if (usingDefaultPassword) {
+    // Dev/test rodando com defaults — log de tripwire pra que seja
+    // visível em logs caso o seed esteja apontando pra prod sem que o
+    // operador tenha setado NODE_ENV.
+    console.warn(
+        '⚠ Seed rodando com senha default. Se DATABASE_URL aponta pra prod, aborta agora (Ctrl+C).',
+    );
+}
 
 const SEED_COMPANIES = [
     {

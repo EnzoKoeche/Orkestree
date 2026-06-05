@@ -467,6 +467,9 @@
             "back": "Voltar para propostas",
             "errorTitle": "Não foi possível carregar a proposta",
             "errorFallback": "Tente de novo em alguns segundos. Se persistir, recarregue a página.",
+            "pdf": {
+                "download": "Baixar PDF"
+            },
             "header": {
                 "request": "Pedido",
                 "client": "Cliente",

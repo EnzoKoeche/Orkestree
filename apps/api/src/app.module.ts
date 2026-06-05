@@ -12,6 +12,7 @@ import { HealthController } from './health.controller';
 import { MembershipsModule } from './memberships/memberships.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProposalJobsModule } from './proposals/jobs/proposal-jobs.module';
+import { ProposalPdfModule } from './proposals/pdf/proposal-pdf.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -90,6 +91,7 @@ function parseRedisUrl(url: string): { host: string; port: number; password?: st
         ClientsModule,
         TasksModule,
         ProposalsModule,
+        ProposalPdfModule,
         ProposalJobsModule,
     ],
     controllers: [HealthController],

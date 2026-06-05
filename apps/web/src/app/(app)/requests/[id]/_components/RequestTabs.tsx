@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // operator clicked would feel broken.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TAB_KEYS = ['details', 'workflow', 'tasks', 'history'] as const;
+const TAB_KEYS = ['details', 'workflow', 'tasks', 'proposals', 'history'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
 interface Props {
@@ -29,10 +29,19 @@ interface Props {
     details: ReactNode;
     workflow: ReactNode;
     tasks: ReactNode;
+    proposals: ReactNode;
     history: ReactNode;
 }
 
-export function RequestTabs({ activeTab, labels, details, workflow, tasks, history }: Props) {
+export function RequestTabs({
+    activeTab,
+    labels,
+    details,
+    workflow,
+    tasks,
+    proposals,
+    history,
+}: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -61,6 +70,7 @@ export function RequestTabs({ activeTab, labels, details, workflow, tasks, histo
             <TabsContent value="details">{details}</TabsContent>
             <TabsContent value="workflow">{workflow}</TabsContent>
             <TabsContent value="tasks">{tasks}</TabsContent>
+            <TabsContent value="proposals">{proposals}</TabsContent>
             <TabsContent value="history">{history}</TabsContent>
         </Tabs>
     );

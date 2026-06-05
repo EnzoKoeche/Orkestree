@@ -23,9 +23,12 @@ services:
     region: oregon  # US West, melhor latência BR
     branch: main
     rootDir: .
+    # NOTE: do NOT run `corepack enable` here. Render's Node 24 build image has
+    # a read-only /usr/bin, and `corepack enable` tries to unlink/replace
+    # /usr/bin/pnpm → EROFS, failing the build. The image already ships pnpm on
+    # PATH (10.x), which reads this v9 lockfile fine (Vercel builds the same
+    # lockfile with pnpm 10.28). So we just call pnpm directly.
     buildCommand: |
-      corepack enable && \
-      corepack prepare pnpm@10.33.2 --activate && \
       pnpm install --frozen-lockfile && \
       pnpm --filter @orkestree/api exec prisma generate && \
       pnpm --filter @orkestree/api build

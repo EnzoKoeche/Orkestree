@@ -9,10 +9,13 @@ import type {
     CustomFieldListItem,
     ListClientsParams,
     ListCustomFieldsParams,
+    ListProposalsParams,
     ListServiceRequestsParams,
     ListTasksParams,
     MembershipsMeResponse,
     Paginated,
+    ProposalDetail,
+    ProposalListItem,
     RequestFieldValue,
     ServiceRequestDetail,
     ServiceRequestListItem,
@@ -401,6 +404,54 @@ export const tasksApi = {
                     limit: params.limit,
                     skip: params.skip,
                 },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+};
+
+// ── Proposals ───────────────────────────────────────────────────────────────
+//
+// The detail endpoint embeds items and statusHistory in a single payload, so
+// the detail page needs exactly one fetch. Responses are role-aware on the
+// backend (3-tier select); the client just renders what comes back. `list`
+// returns a bare array — the endpoint does not yet wrap with a total count
+// (tracked as TASK-AUDIT-8); when it does, switch the generic to Paginated<T>.
+
+export interface ProposalApiOptions {
+    /** Server Components pass the JWT explicitly (lib/http can't read
+     *  localStorage server-side). */
+    tokenOverride?: string;
+    signal?: AbortSignal;
+}
+
+export const proposalsApi = {
+    list(
+        companyId: string,
+        params: ListProposalsParams = {},
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/proposals`,
+            {
+                query: {
+                    serviceRequestId: params.serviceRequestId,
+                    clientId: params.clientId,
+                    status: params.status,
+                    limit: params.limit,
+                    skip: params.skip,
+                },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    get(companyId: string, proposalId: string, opts: ProposalApiOptions = {}) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}`,
+            {
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

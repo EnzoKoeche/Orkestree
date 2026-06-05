@@ -426,6 +426,49 @@
             }
         }
     },
+    "proposals": {
+        "detail": {
+            "back": "Voltar para propostas",
+            "errorTitle": "Não foi possível carregar a proposta",
+            "errorFallback": "Tente de novo em alguns segundos. Se persistir, recarregue a página.",
+            "header": {
+                "request": "Pedido",
+                "client": "Cliente",
+                "createdBy": "Criada por",
+                "validUntil": "Válida até",
+                "noValidUntil": "Sem prazo",
+                "total": "Total"
+            },
+            "items": {
+                "title": "Itens",
+                "empty": "Nenhum item nesta proposta.",
+                "columns": {
+                    "description": "Descrição",
+                    "unit": "Unidade",
+                    "quantity": "Qtd.",
+                    "unitPrice": "Valor unitário",
+                    "discount": "Desconto",
+                    "internalCost": "Custo interno",
+                    "subtotal": "Subtotal"
+                },
+                "totals": {
+                    "subtotal": "Subtotal",
+                    "discount": "Desconto",
+                    "total": "Total",
+                    "internalCost": "Custo interno total"
+                }
+            },
+            "notes": {
+                "title": "Observações",
+                "clientNotes": "Observações para o cliente",
+                "internalNotes": "Observações internas"
+            },
+            "history": {
+                "title": "Histórico",
+                "by": "por {name}"
+            }
+        }
+    },
     "pagination": {
         "previous": "Anterior",
         "next": "Próxima",

@@ -74,9 +74,10 @@ export const SYSTEM_DEFAULTS: Record<Role, DefaultMap> = {
         [CompanyResource.REQUEST]: { [PermissionAction.VIEW]: true, [PermissionAction.EDIT]: true },
         [CompanyResource.CLIENT]: { [PermissionAction.VIEW]: true },
         // OPERACIONAL is the pilot's hands-on operator: they build the proposal
-        // from the request. CREATE (not yet EDIT — DRAFT item editing lands with
-        // the proposal-editing UI). EDIT/APPROVE stay with OWNER/ADMIN.
-        [CompanyResource.PROPOSAL]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true },
+        // from the request and edit its DRAFT (add/edit/remove items). CREATE +
+        // EDIT. APPROVE/REJECT/DELETE stay with OWNER/ADMIN — sending and
+        // approving a proposal is a commercial decision, not an operator one.
+        [CompanyResource.PROPOSAL]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true, [PermissionAction.EDIT]: true },
         [CompanyResource.TASK]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true, [PermissionAction.EDIT]: true },
         [CompanyResource.DOCUMENT]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true },
         [CompanyResource.CHAT]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true },

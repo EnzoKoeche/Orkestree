@@ -611,3 +611,22 @@ export interface ListProposalsParams {
     limit?: number;
     skip?: number;
 }
+
+/** Payload for POST /companies/:companyId/proposals (mirror of CreateProposalDto).
+ *  Pricing fields (subtotal/totalPrice/totalCost) are NOT here — computed
+ *  server-side from items. clientId is NOT here either — derived from the
+ *  linked service request at creation time. Items are intentionally omitted:
+ *  the proposal is created in DRAFT and items are added afterwards via the
+ *  dedicated items endpoints (DRAFT editing UI). */
+export interface CreateProposalPayload {
+    serviceRequestId: string;
+    /** 1–256 chars (backend DTO). */
+    title: string;
+    /** Optional internal notes, ≤4096 chars. */
+    notes?: string;
+    /** Optional client-facing notes, ≤4096 chars. */
+    clientNotes?: string;
+    /** Optional ISO-8601 datetime; the create form serializes a date input to
+     *  UTC midnight to satisfy the backend's @IsISO8601(). */
+    validUntil?: string;
+}

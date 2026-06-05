@@ -5,6 +5,7 @@ import type {
     ClientFieldValue,
     ClientListItem,
     CreateClientPayload,
+    CreateProposalPayload,
     CreateServiceRequestPayload,
     CustomFieldListItem,
     ListClientsParams,
@@ -452,6 +453,28 @@ export const proposalsApi = {
         return request<ProposalDetail>(
             `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}`,
             {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    /**
+     * Creates a DRAFT proposal anchored to a service request. Returns the full
+     * ProposalDetail so the caller can navigate straight to /proposals/:id.
+     * Permission gate: PROPOSAL.CREATE (OWNER/ADMIN/OPERACIONAL). Client-side
+     * callers omit tokenOverride and go through /api/proxy.
+     */
+    create(
+        companyId: string,
+        payload: CreateProposalPayload,
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals`,
+            {
+                method: 'POST',
+                body: payload,
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

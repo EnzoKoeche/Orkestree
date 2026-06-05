@@ -487,3 +487,127 @@ export interface CancelRequestPayload {
      *  chars per backend DTO. */
     reason?: string;
 }
+
+// ── Proposals ────────────────────────────────────────────────────────────────
+//
+// Mirrors the backend's role-aware select shapes (PROPOSAL_*_SELECT_*). Money
+// and quantity fields arrive as STRINGS — Prisma serializes Decimal to string
+// over JSON. Format them with lib/format (formatBRL/formatQuantity/formatPercent);
+// never do float math on them (totals are authoritative on the backend).
+//
+// Role-awareness is expressed via optional fields: the backend STRIPS columns
+// from the projection per role (e.g. CLIENTE never receives notes/totalCost/
+// statusHistory; only OWNER/ADMIN receive totalCost/internalCost). The UI
+// renders whatever the backend chose to send — it must never assume a field
+// is present, and the optional types enforce that at compile time.
+
+export type ProposalStatus =
+    | 'DRAFT'
+    | 'SENT'
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'EXPIRED'
+    | 'CANCELLED';
+
+/** Linked service request summary carried on a proposal. */
+export interface ProposalRequestRef {
+    id: string;
+    number: number;
+    title: string;
+}
+
+/** Linked client summary (null when the anchoring request had no client). */
+export interface ProposalClientRef {
+    id: string;
+    number: number;
+    name: string;
+    type: ClientType;
+}
+
+/**
+ * A proposal line item. `internalCost` is PRIVILEGED-only (OWNER/ADMIN) — the
+ * backend omits it from the select for every other role, so it is optional.
+ */
+export interface ProposalItem {
+    id: string;
+    description: string;
+    unit: string | null;
+    quantity: string;
+    unitPrice: string;
+    discountPct: string | null;
+    subtotal: string;
+    sortOrder: number;
+    /** PRIVILEGED-only (OWNER/ADMIN). Absent for other roles. */
+    internalCost?: string;
+}
+
+export interface ProposalStatusHistoryEntry {
+    id: string;
+    /** null on the very first row — the DRAFT placement at creation time. */
+    fromStatus: ProposalStatus | null;
+    toStatus: ProposalStatus;
+    note: string | null;
+    createdAt: string;
+    actorMembership: MembershipRef;
+}
+
+/** List shape — mirror of PROPOSAL_LIST_SELECT_*. Returned as a bare array by
+ *  GET /proposals (the endpoint does not yet wrap with a total count). */
+export interface ProposalListItem {
+    id: string;
+    number: number;
+    status: ProposalStatus;
+    title: string;
+    subtotal: string;
+    totalPrice: string;
+    discountPct: string | null;
+    discountAmount: string | null;
+    validUntil: string | null;
+    sentAt: string | null;
+    approvedAt: string | null;
+    rejectedAt: string | null;
+    expiredAt: string | null;
+    /** Absent from the CLIENTE projection. */
+    cancelledAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    serviceRequest: ProposalRequestRef;
+    /** Absent from the CLIENTE projection. */
+    client?: ProposalClientRef | null;
+    /** Absent from the CLIENTE projection. */
+    createdByMembership?: MembershipRef;
+    /** PRIVILEGED-only (OWNER/ADMIN). */
+    totalCost?: string;
+}
+
+/** Detail shape — mirror of PROPOSAL_DETAIL_SELECT_*. Adds notes, items, and
+ *  status history on top of the list shape. Several fields are role-stripped
+ *  (see per-field notes); render defensively. */
+export interface ProposalDetail extends ProposalListItem {
+    /** Internal notes — not sent to CLIENTE. */
+    notes?: string | null;
+    clientNotes?: string | null;
+    pdfUrl?: string | null;
+    /** Not sent to CLIENTE. */
+    pdfGeneratedAt?: string | null;
+    /** Not sent to CLIENTE. */
+    rejectionReason?: string | null;
+    /** Not sent to CLIENTE. */
+    cancellationReason?: string | null;
+    /** Not sent to CLIENTE. */
+    approvedByMembership?: MembershipRef | null;
+    /** Not sent to CLIENTE. */
+    rejectedByMembership?: MembershipRef | null;
+    items: ProposalItem[];
+    /** Not sent to CLIENTE. */
+    statusHistory?: ProposalStatusHistoryEntry[];
+}
+
+/** Filter shape consumed by GET /companies/:companyId/proposals. */
+export interface ListProposalsParams {
+    serviceRequestId?: string;
+    clientId?: string;
+    status?: ProposalStatus;
+    limit?: number;
+    skip?: number;
+}

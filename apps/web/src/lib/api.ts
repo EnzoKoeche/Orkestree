@@ -5,6 +5,7 @@ import type {
     ClientFieldValue,
     ClientListItem,
     CreateClientPayload,
+    CreateProposalItemPayload,
     CreateProposalPayload,
     CreateServiceRequestPayload,
     CustomFieldListItem,
@@ -25,6 +26,7 @@ import type {
     TaskListItem,
     TransitionStagePayload,
     UpdateClientPayload,
+    UpdateProposalItemPayload,
 } from '@/types/domain';
 import { request } from './http';
 
@@ -475,6 +477,63 @@ export const proposalsApi = {
             {
                 method: 'POST',
                 body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    // ── Items (DRAFT-only; gate PROPOSAL.EDIT) ───────────────────────────────
+    //
+    // Each item mutation returns the full ProposalDetail with totals already
+    // recomputed by the backend — the editor renders that response verbatim
+    // and never recomputes a total client-side.
+
+    addItem(
+        companyId: string,
+        proposalId: string,
+        payload: CreateProposalItemPayload,
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/items`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    updateItem(
+        companyId: string,
+        proposalId: string,
+        itemId: string,
+        payload: UpdateProposalItemPayload,
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/items/${encodeURIComponent(itemId)}`,
+            {
+                method: 'PATCH',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    removeItem(
+        companyId: string,
+        proposalId: string,
+        itemId: string,
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/items/${encodeURIComponent(itemId)}`,
+            {
+                method: 'DELETE',
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

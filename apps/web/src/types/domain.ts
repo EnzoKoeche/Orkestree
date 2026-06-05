@@ -630,3 +630,36 @@ export interface CreateProposalPayload {
      *  UTC midnight to satisfy the backend's @IsISO8601(). */
     validUntil?: string;
 }
+
+/** Payload for POST /proposals/:id/items (mirror of CreateProposalItemDto).
+ *  Money/quantity are NUMBERS here (the DTO validates @IsNumber) — the editor
+ *  parses its string inputs to numbers on submit. subtotal is NOT sent; the
+ *  backend computes it. internalCost is accepted only from privileged callers. */
+export interface CreateProposalItemPayload {
+    /** 1–1024 chars. */
+    description: string;
+    /** ≤32 chars. */
+    unit?: string;
+    /** Decimal(12,4), ≥ 0.0001. */
+    quantity: number;
+    /** Decimal(12,2), ≥ 0. */
+    unitPrice: number;
+    /** 0–100; null clears. */
+    discountPct?: number | null;
+    /** PRIVILEGED-only at write time. null clears. */
+    internalCost?: number | null;
+    sortOrder?: number;
+}
+
+/** Payload for PATCH /proposals/:id/items/:itemId (mirror of UpdateProposalItemDto).
+ *  All fields optional; the backend rejects an empty body. Sending null on
+ *  discountPct/internalCost/unit clears the value; omitting leaves it unchanged. */
+export interface UpdateProposalItemPayload {
+    description?: string;
+    unit?: string | null;
+    quantity?: number;
+    unitPrice?: number;
+    discountPct?: number | null;
+    internalCost?: number | null;
+    sortOrder?: number;
+}

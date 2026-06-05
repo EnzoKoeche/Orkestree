@@ -68,14 +68,19 @@ function brl(d: Prisma.Decimal | null | undefined): string {
 
 // Page geometry (A4, 50pt margins → 495pt usable width starting at x=50).
 const MARGIN = 50;
-const PAGE_BOTTOM = 792 - MARGIN; // A4 height 842pt… pdfkit A4 = 595.28 x 841.89
+// pdfkit A4 is 595.28 × 841.89pt. Leave a margin at the bottom for the footer.
+const PAGE_BOTTOM = 841 - MARGIN;
+// Column left-edges. Usable width is 50→545 (495pt). Money columns are
+// right-aligned and need real room — "R$ 8.400,00" is ~53pt at 9pt, and the
+// bold total is wider — so SUBTOTAL gets the widest slot (462→545 = 83pt) to
+// stop currency values wrapping to a second line.
 const X = {
     desc: 50,
-    unit: 290,
-    qty: 340,
-    unitPrice: 395,
-    disc: 470,
-    subtotal: 505,
+    unit: 240,
+    qty: 285,
+    unitPrice: 345,
+    disc: 420,
+    subtotal: 462,
     end: 545,
 } as const;
 
@@ -207,7 +212,7 @@ export class ProposalPdfRenderer {
 
         const row = (label: string, value: string, bold = false) => {
             const y = doc.y;
-            doc.fontSize(bold ? 12 : 10).font(bold ? 'Helvetica-Bold' : 'Helvetica');
+            doc.fontSize(bold ? 11 : 10).font(bold ? 'Helvetica-Bold' : 'Helvetica');
             doc.fillColor(bold ? '#000000' : '#444444').text(label, labelX, y, {
                 width: valX - labelX - 8,
                 align: 'right',

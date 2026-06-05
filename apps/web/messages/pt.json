@@ -545,6 +545,47 @@
             "history": {
                 "title": "Histórico",
                 "by": "por {name}"
+            },
+            "actions": {
+                "noteLabel": "Observação interna (opcional)",
+                "notePlaceholder": "Anotação interna sobre esta ação.",
+                "reasonLabel": "Motivo (opcional)",
+                "reasonPlaceholder": "Por que esta decisão?",
+                "cancelAction": "Voltar",
+                "error": "Não foi possível concluir a ação.",
+                "send": {
+                    "trigger": "Enviar proposta",
+                    "emptyTooltip": "Adicione ao menos um item antes de enviar.",
+                    "title": "Enviar proposta?",
+                    "description": "A proposta vai para o cliente e não poderá mais ter os itens editados.",
+                    "confirm": "Enviar proposta",
+                    "submitting": "Enviando…",
+                    "success": "Proposta enviada."
+                },
+                "approve": {
+                    "trigger": "Aprovar",
+                    "title": "Aprovar proposta?",
+                    "description": "Marque a proposta como aprovada pelo cliente.",
+                    "confirm": "Aprovar proposta",
+                    "submitting": "Aprovando…",
+                    "success": "Proposta aprovada."
+                },
+                "reject": {
+                    "trigger": "Recusar",
+                    "title": "Recusar proposta?",
+                    "description": "Marque a proposta como recusada pelo cliente.",
+                    "confirm": "Recusar proposta",
+                    "submitting": "Recusando…",
+                    "success": "Proposta recusada."
+                },
+                "cancel": {
+                    "trigger": "Cancelar",
+                    "title": "Cancelar proposta?",
+                    "description": "A proposta será cancelada. Esta ação encerra a proposta.",
+                    "confirm": "Cancelar proposta",
+                    "submitting": "Cancelando…",
+                    "success": "Proposta cancelada."
+                }
             }
         }
     },

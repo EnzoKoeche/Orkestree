@@ -539,4 +539,61 @@ export const proposalsApi = {
             },
         );
     },
+
+    // ── Lifecycle transitions ────────────────────────────────────────────────
+    //
+    // Each has its own endpoint + permission (send=PUBLISH, approve=APPROVE,
+    // reject=REJECT, cancel=EDIT) and returns the updated ProposalDetail. The
+    // backend enforces the legal state machine (e.g. approve only from SENT);
+    // the UI gates by status to avoid offering illegal transitions, but a stale
+    // tab simply gets a 422 surfaced as a toast. Bodies carry only the fields
+    // the endpoint's DTO whitelists (ValidationPipe forbids unknown keys).
+
+    sendProposal(
+        companyId: string,
+        proposalId: string,
+        payload: { note?: string } = {},
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/send`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    approveProposal(
+        companyId: string,
+        proposalId: string,
+        payload: { note?: string } = {},
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/approve`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    rejectProposal(
+        companyId: string,
+        proposalId: string,
+        payload: { reason?: string; note?: string } = {},
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/reject`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    cancelProposal(
+        companyId: string,
+        proposalId: string,
+        payload: { reason?: string; note?: string } = {},
+        opts: ProposalApiOptions = {},
+    ) {
+        return request<ProposalDetail>(
+            `/companies/${encodeURIComponent(companyId)}/proposals/${encodeURIComponent(proposalId)}/cancel`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
 };

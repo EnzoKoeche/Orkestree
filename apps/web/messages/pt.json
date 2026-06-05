@@ -463,6 +463,26 @@
         }
     },
     "proposals": {
+        "list": {
+            "title": "Propostas",
+            "subtitle": "Todas as propostas comerciais da sua empresa.",
+            "errorTitle": "Não foi possível carregar as propostas",
+            "errorFallback": "Tente novamente em instantes.",
+            "noClient": "Sem cliente",
+            "columns": {
+                "number": "Proposta",
+                "title": "Título",
+                "status": "Status",
+                "client": "Cliente",
+                "total": "Total",
+                "validUntil": "Válida até",
+                "updatedAt": "Atualizada em"
+            },
+            "empty": {
+                "title": "Nenhuma proposta ainda",
+                "description": "Propostas são criadas a partir de um pedido. Abra um pedido e use \"Nova proposta\" na aba Propostas."
+            }
+        },
         "detail": {
             "back": "Voltar para propostas",
             "errorTitle": "Não foi possível carregar a proposta",

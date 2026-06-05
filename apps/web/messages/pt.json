@@ -370,6 +370,7 @@
                 "details": "Detalhes",
                 "workflow": "Fluxo",
                 "tasks": "Tarefas",
+                "proposals": "Propostas",
                 "history": "Histórico"
             },
             "header": {
@@ -414,6 +415,41 @@
                     "CANCELLED": "Cancelada"
                 },
                 "noAssignee": "Sem responsável"
+            },
+            "proposals": {
+                "title": "Propostas",
+                "empty": "Nenhuma proposta para este pedido ainda.",
+                "columns": {
+                    "number": "Proposta",
+                    "title": "Título",
+                    "status": "Status",
+                    "total": "Total",
+                    "validUntil": "Válida até",
+                    "updatedAt": "Atualizada em"
+                },
+                "create": {
+                    "trigger": "Nova proposta",
+                    "cancelledTooltip": "Não é possível criar proposta para um pedido cancelado",
+                    "title": "Nova proposta",
+                    "description": "Crie uma proposta em rascunho para este pedido. Você adiciona os itens depois.",
+                    "fields": {
+                        "title": "Título",
+                        "validUntil": "Válida até",
+                        "clientNotes": "Observações para o cliente",
+                        "clientNotesPlaceholder": "Texto que aparece para o cliente na proposta (opcional)."
+                    },
+                    "errors": {
+                        "titleRequired": "Informe um título para a proposta.",
+                        "titleTooLong": "Título muito longo (máx. 256 caracteres).",
+                        "clientNotesTooLong": "Observações muito longas (máx. 4096 caracteres).",
+                        "validUntilInvalid": "Data inválida."
+                    },
+                    "cancel": "Cancelar",
+                    "submit": "Criar proposta",
+                    "submitting": "Criando…",
+                    "success": "Proposta #{number} criada.",
+                    "error": "Não foi possível criar a proposta."
+                }
             },
             "history": {
                 "empty": "Sem histórico ainda.",

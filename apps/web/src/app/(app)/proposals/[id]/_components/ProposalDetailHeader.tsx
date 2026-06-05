@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { DateCell } from '@/components/ui/DateCell';
 import { ProposalStatusBadge } from '@/components/ui/ProposalStatusBadge';
 import type { MembershipRef, ProposalDetail } from '@/types/domain';
+import { ProposalActions } from './ProposalActions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProposalDetailHeader — top of the proposal detail page.
@@ -90,13 +91,16 @@ export async function ProposalDetailHeader({
                 </dl>
             </div>
 
-            <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('total')}
-                </span>
-                <span className="text-2xl font-semibold tabular-nums text-foreground">
-                    {formatBRL(proposal.totalPrice)}
-                </span>
+            <div className="flex shrink-0 flex-col items-start gap-4 sm:items-end">
+                <ProposalActions proposal={proposal} />
+                <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('total')}
+                    </span>
+                    <span className="text-2xl font-semibold tabular-nums text-foreground">
+                        {formatBRL(proposal.totalPrice)}
+                    </span>
+                </div>
             </div>
         </header>
     );

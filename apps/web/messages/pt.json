@@ -492,6 +492,49 @@
                     "discount": "Desconto",
                     "total": "Total",
                     "internalCost": "Custo interno total"
+                },
+                "editor": {
+                    "addItem": "Adicionar item",
+                    "actions": "Ações",
+                    "empty": "Nenhum item ainda. Adicione o primeiro para montar a proposta.",
+                    "editItemAria": "Editar item {description}",
+                    "removeItemAria": "Remover item {description}",
+                    "addTitle": "Adicionar item",
+                    "editTitle": "Editar item",
+                    "formDescription": "O subtotal e o total são calculados automaticamente a partir da quantidade, valor e desconto.",
+                    "fields": {
+                        "description": "Descrição",
+                        "unit": "Unidade",
+                        "unitPlaceholder": "un, h, kg…",
+                        "quantity": "Quantidade",
+                        "unitPrice": "Valor unitário",
+                        "discountPct": "Desconto (%)",
+                        "internalCost": "Custo interno (por unidade)",
+                        "internalCostHint": "Visível apenas para você e administradores. Nunca aparece para o cliente."
+                    },
+                    "errors": {
+                        "descriptionRequired": "Informe a descrição do item.",
+                        "descriptionTooLong": "Descrição muito longa (máx. 1024 caracteres).",
+                        "unitTooLong": "Unidade muito longa (máx. 32 caracteres).",
+                        "quantityInvalid": "Informe uma quantidade maior que zero.",
+                        "unitPriceInvalid": "Informe um valor unitário válido.",
+                        "discountInvalid": "O desconto deve estar entre 0 e 100.",
+                        "internalCostInvalid": "Informe um custo interno válido."
+                    },
+                    "formCancel": "Cancelar",
+                    "saveAdd": "Adicionar item",
+                    "saveEdit": "Salvar alterações",
+                    "saving": "Salvando…",
+                    "added": "Item adicionado.",
+                    "updated": "Item atualizado.",
+                    "saveError": "Não foi possível salvar o item.",
+                    "removeTitle": "Remover item?",
+                    "removeWarning": "O item \"{description}\" será removido da proposta e os totais serão recalculados.",
+                    "removeCancel": "Manter item",
+                    "removeConfirm": "Remover item",
+                    "removing": "Removendo…",
+                    "removed": "Item removido.",
+                    "removeError": "Não foi possível remover o item."
                 }
             },
             "notes": {

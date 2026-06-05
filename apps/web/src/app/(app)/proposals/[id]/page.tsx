@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import type { ProposalDetail } from '@/types/domain';
 import { ProposalDetailHeader } from './_components/ProposalDetailHeader';
+import { ProposalDraftItems } from './_components/ProposalDraftItems';
 import { ProposalHistory } from './_components/ProposalHistory';
 import { ProposalItemsTable } from './_components/ProposalItemsTable';
 import { ProposalNotes } from './_components/ProposalNotes';
@@ -75,7 +76,11 @@ export default async function ProposalDetailPage({
             </div>
 
             <div className="mt-8 space-y-8">
-                <ProposalItemsTable proposal={proposal} />
+                {proposal.status === 'DRAFT' ? (
+                    <ProposalDraftItems proposal={proposal} />
+                ) : (
+                    <ProposalItemsTable proposal={proposal} />
+                )}
                 <ProposalNotes proposal={proposal} />
                 {proposal.statusHistory && proposal.statusHistory.length > 0 ? (
                     <ProposalHistory entries={proposal.statusHistory} />

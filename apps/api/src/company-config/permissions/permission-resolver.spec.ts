@@ -89,6 +89,27 @@ describe('PermissionResolverService.isAllowed', () => {
         expect(del).toBe(false);
     });
 
+    it('grants OPERACIONAL PROPOSAL.CREATE via SYSTEM_DEFAULTS but not EDIT (pilot operator builds proposals)', async () => {
+        prisma.userPermissionOverride.findUnique.mockResolvedValue(null);
+        prisma.rolePermission.findUnique.mockResolvedValue(null);
+
+        const create = await service.isAllowed(
+            MEMBERSHIP,
+            CompanyResource.PROPOSAL,
+            PermissionAction.CREATE,
+        );
+        // EDIT (DRAFT item editing) stays with OWNER/ADMIN until the
+        // proposal-editing UI lands.
+        const edit = await service.isAllowed(
+            MEMBERSHIP,
+            CompanyResource.PROPOSAL,
+            PermissionAction.EDIT,
+        );
+
+        expect(create).toBe(true);
+        expect(edit).toBe(false);
+    });
+
     it('short-circuits on Redis cache hit (no Prisma calls)', async () => {
         redis.get.mockResolvedValueOnce('1');
 

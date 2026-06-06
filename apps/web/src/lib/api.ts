@@ -39,6 +39,7 @@ import type {
     UpdateCustomFieldPayload,
     UpdateProposalItemPayload,
     UpdateServiceTypePayload,
+    WorkflowListItem,
 } from '@/types/domain';
 import { request } from './http';
 
@@ -521,6 +522,18 @@ export const customFieldsApi = {
         return request<void>(
             `/companies/${encodeURIComponent(companyId)}/config/custom-fields/${encodeURIComponent(fieldId)}/options/${encodeURIComponent(optionId)}`,
             { method: 'DELETE', tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+};
+
+// ── Workflows (read-only view — EPIC D / D3) ──────────────────────────────────
+
+export const workflowsApi = {
+    /** Workflows with their stages embedded (ordered). Editing is out of scope. */
+    list(companyId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<WorkflowListItem[]>(
+            `/companies/${encodeURIComponent(companyId)}/config/workflows`,
+            { tokenOverride: opts.tokenOverride, signal: opts.signal },
         );
     },
 };

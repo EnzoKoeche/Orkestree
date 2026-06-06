@@ -1,4 +1,4 @@
-import { ListChecks, Wrench } from 'lucide-react';
+import { ListChecks, Workflow, Wrench } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { EmptyTable } from '@/components/ui/EmptyTable';
 import { LoadingState } from '@/components/ui/States';
@@ -11,11 +11,15 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { customFieldsApi, serviceTypesApi } from '@/lib/api';
+import { customFieldsApi, serviceTypesApi, workflowsApi } from '@/lib/api';
 import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import { cn } from '@/lib/utils';
-import type { CustomFieldListItem, ServiceTypeListItem } from '@/types/domain';
+import type {
+    CustomFieldListItem,
+    ServiceTypeListItem,
+    WorkflowListItem,
+} from '@/types/domain';
 import { CustomFieldFormDialog } from './_components/CustomFieldFormDialog';
 import { CustomFieldStatusToggle } from './_components/CustomFieldStatusToggle';
 import { ServiceTypeFormDialog } from './_components/ServiceTypeFormDialog';
@@ -45,10 +49,12 @@ export default async function SettingsPage() {
 
     let serviceTypes: ServiceTypeListItem[];
     let customFields: CustomFieldListItem[];
+    let workflows: WorkflowListItem[];
     try {
-        [serviceTypes, customFields] = await Promise.all([
+        [serviceTypes, customFields, workflows] = await Promise.all([
             serviceTypesApi.list(activeCompanyId, { tokenOverride: token }),
             customFieldsApi.list(activeCompanyId, {}, { tokenOverride: token }),
+            workflowsApi.list(activeCompanyId, { tokenOverride: token }),
         ]);
     } catch (err) {
         const noAccess = err instanceof ApiError && err.status === 403;
@@ -250,6 +256,94 @@ export default async function SettingsPage() {
                         )}
                     </Table>
                 </div>
+            </section>
+
+            <section className="mt-10">
+                <div className="mb-3">
+                    <h2 className="text-sm font-semibold text-foreground">{t('workflows.title')}</h2>
+                    <p className="text-sm text-muted-foreground">{t('workflows.subtitle')}</p>
+                </div>
+
+                {workflows.length === 0 ? (
+                    <div className="rounded-md border bg-card p-6 text-center text-sm text-muted-foreground">
+                        {t('workflows.empty')}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {workflows.map((wf) => {
+                            const stages = wf.stages
+                                .filter((s) => s.isActive)
+                                .sort((a, b) => a.sortOrder - b.sortOrder);
+                            return (
+                                <div
+                                    key={wf.id}
+                                    className={cn(
+                                        'rounded-md border bg-card p-4',
+                                        !wf.isActive && 'opacity-60',
+                                    )}
+                                >
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <Workflow
+                                            className="h-4 w-4 text-muted-foreground"
+                                            aria-hidden="true"
+                                        />
+                                        <span className="font-medium text-foreground">{wf.name}</span>
+                                        {wf.isDefault ? (
+                                            <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
+                                                {t('workflows.default')}
+                                            </span>
+                                        ) : null}
+                                        {!wf.isActive ? (
+                                            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
+                                                {t('workflows.inactive')}
+                                            </span>
+                                        ) : null}
+                                    </div>
+
+                                    {stages.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            {t('workflows.noStages')}
+                                        </p>
+                                    ) : (
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            {stages.map((s, i) => (
+                                                <span key={s.id} className="flex items-center gap-1.5">
+                                                    <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
+                                                        {s.color ? (
+                                                            <span
+                                                                className="h-2 w-2 rounded-full"
+                                                                style={{ backgroundColor: s.color }}
+                                                                aria-hidden="true"
+                                                            />
+                                                        ) : null}
+                                                        <span className="font-medium text-foreground">
+                                                            {s.name}
+                                                        </span>
+                                                        {s.isInitial ? (
+                                                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                                                {t('workflows.initial')}
+                                                            </span>
+                                                        ) : null}
+                                                        {s.isFinal ? (
+                                                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                                                {t('workflows.final')}
+                                                            </span>
+                                                        ) : null}
+                                                    </span>
+                                                    {i < stages.length - 1 ? (
+                                                        <span className="text-muted-foreground" aria-hidden="true">
+                                                            →
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </section>
         </PageContainer>
     );

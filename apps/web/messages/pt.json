@@ -827,6 +827,16 @@
                 "deactivated": "Campo desativado.",
                 "error": "Não foi possível atualizar a situação."
             }
+        },
+        "workflows": {
+            "title": "Fluxos de trabalho",
+            "subtitle": "As etapas pelas quais os pedidos passam (somente visualização).",
+            "empty": "Nenhum fluxo configurado.",
+            "noStages": "Sem etapas.",
+            "default": "Padrão",
+            "inactive": "Inativo",
+            "initial": "início",
+            "final": "fim"
         }
     },
     "pagination": {

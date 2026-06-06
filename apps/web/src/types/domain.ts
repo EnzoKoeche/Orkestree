@@ -258,6 +258,37 @@ export interface ListCustomFieldsParams {
     isActive?: boolean;
 }
 
+/** Option for a SELECT/MULTISELECT custom field (create). value is snake_case. */
+export interface CreateCustomFieldOptionPayload {
+    label: string;
+    value: string;
+    sortOrder?: number;
+}
+
+/** Payload for POST /config/custom-fields (mirror of CreateCustomFieldDto).
+ *  code/target/type are immutable after creation. options apply to
+ *  SELECT/MULTISELECT. */
+export interface CreateCustomFieldPayload {
+    code: string;
+    label: string;
+    target: CustomFieldTarget;
+    type: CustomFieldType;
+    serviceTypeId?: string;
+    isRequired?: boolean;
+    placeholder?: string;
+    helpText?: string;
+    options?: CreateCustomFieldOptionPayload[];
+}
+
+/** Payload for PATCH /config/custom-fields/:id (code/target/type NOT editable). */
+export interface UpdateCustomFieldPayload {
+    label?: string;
+    isRequired?: boolean;
+    placeholder?: string | null;
+    helpText?: string | null;
+    sortOrder?: number;
+}
+
 /** Wire shape returned by GET /requests/:id/field-values. Backend stores
  *  values in typed columns (only one is set per row depending on fieldType);
  *  the frontend reads the matching one based on customField.type. */

@@ -7,12 +7,14 @@ import type {
     ClientFieldValue,
     ClientListItem,
     CreateClientPayload,
+    CreateCustomFieldPayload,
     CreateProposalItemPayload,
     CreateCommentPayload,
     CreateProposalPayload,
     CreateServiceRequestPayload,
     CreateServiceTypePayload,
     CreateTaskPayload,
+    CustomFieldOption,
     CustomFieldListItem,
     ListClientsParams,
     ListCustomFieldsParams,
@@ -34,6 +36,7 @@ import type {
     TransitionStagePayload,
     TransitionTaskPayload,
     UpdateClientPayload,
+    UpdateCustomFieldPayload,
     UpdateProposalItemPayload,
     UpdateServiceTypePayload,
 } from '@/types/domain';
@@ -458,6 +461,66 @@ export const customFieldsApi = {
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateCustomFieldPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<CustomFieldListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    update(
+        companyId: string,
+        fieldId: string,
+        payload: UpdateCustomFieldPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<CustomFieldListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields/${encodeURIComponent(fieldId)}`,
+            { method: 'PATCH', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    setActive(
+        companyId: string,
+        fieldId: string,
+        active: boolean,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        const action = active ? 'activate' : 'deactivate';
+        return request<CustomFieldListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields/${encodeURIComponent(fieldId)}/${action}`,
+            { method: 'POST', tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    addOption(
+        companyId: string,
+        fieldId: string,
+        payload: { label: string; value: string; sortOrder?: number },
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<CustomFieldOption>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields/${encodeURIComponent(fieldId)}/options`,
+            { method: 'POST', body: payload, tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    deleteOption(
+        companyId: string,
+        fieldId: string,
+        optionId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<void>(
+            `/companies/${encodeURIComponent(companyId)}/config/custom-fields/${encodeURIComponent(fieldId)}/options/${encodeURIComponent(optionId)}`,
+            { method: 'DELETE', tokenOverride: opts.tokenOverride, signal: opts.signal },
         );
     },
 };

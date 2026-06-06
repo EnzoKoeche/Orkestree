@@ -740,6 +740,93 @@
                 "deactivated": "Tipo de serviço desativado.",
                 "error": "Não foi possível atualizar a situação."
             }
+        },
+        "customFields": {
+            "title": "Campos personalizados",
+            "subtitle": "Campos extras que aparecem em pedidos, clientes e propostas.",
+            "required": "Obrigatório",
+            "columns": {
+                "label": "Campo",
+                "type": "Tipo",
+                "target": "Onde",
+                "required": "Obrigatório",
+                "status": "Situação",
+                "actions": "Ações"
+            },
+            "types": {
+                "TEXT": "Texto",
+                "TEXTAREA": "Texto longo",
+                "NUMBER": "Número",
+                "DECIMAL": "Decimal",
+                "DATE": "Data",
+                "DATETIME": "Data e hora",
+                "SELECT": "Seleção",
+                "MULTISELECT": "Múltipla seleção",
+                "BOOLEAN": "Sim/Não",
+                "FILE": "Arquivo",
+                "PHONE": "Telefone",
+                "EMAIL": "E-mail",
+                "URL": "Link"
+            },
+            "targets": {
+                "REQUEST": "Pedido",
+                "CLIENT": "Cliente",
+                "PROPOSAL": "Proposta",
+                "SERVICE_ORDER": "Ordem de serviço",
+                "CONTACT": "Contato"
+            },
+            "empty": {
+                "title": "Nenhum campo personalizado ainda",
+                "description": "Crie campos extras para capturar informações específicas do seu negócio."
+            },
+            "form": {
+                "createTrigger": "Novo campo",
+                "editTrigger": "Editar",
+                "createTitle": "Novo campo personalizado",
+                "editTitle": "Editar campo",
+                "description": "Campos personalizados aparecem nos formulários conforme o tipo e onde se aplicam.",
+                "immutableHint": "Código {code} · {type} · {target} (não podem ser alterados).",
+                "optionsReadonlyHint": "A edição de opções entra em uma próxima atualização.",
+                "fields": {
+                    "code": "Código",
+                    "codeHint": "Identificador interno (minúsculas, números e _). Não pode mudar depois.",
+                    "codePlaceholder": "ex.: numero_dente",
+                    "label": "Rótulo",
+                    "target": "Onde aparece",
+                    "type": "Tipo",
+                    "options": "Opções",
+                    "optionPlaceholder": "Texto da opção",
+                    "placeholder": "Texto de exemplo",
+                    "helpText": "Texto de ajuda",
+                    "isRequired": "Campo obrigatório"
+                },
+                "addOption": "Adicionar",
+                "removeOption": "Remover opção",
+                "errors": {
+                    "labelRequired": "Informe o rótulo do campo.",
+                    "labelTooLong": "Rótulo muito longo (máx. 128 caracteres).",
+                    "codeRequired": "Informe um código (mín. 2 caracteres).",
+                    "codeTooLong": "Código muito longo (máx. 64 caracteres).",
+                    "codePattern": "Use só minúsculas, números e _, começando por letra.",
+                    "placeholderTooLong": "Texto de exemplo muito longo (máx. 256 caracteres).",
+                    "helpTextTooLong": "Texto de ajuda muito longo (máx. 512 caracteres).",
+                    "optionsRequired": "Adicione ao menos uma opção para campos de seleção."
+                },
+                "cancel": "Cancelar",
+                "saveCreate": "Criar campo",
+                "saveEdit": "Salvar alterações",
+                "submitting": "Salvando…",
+                "successCreate": "Campo criado.",
+                "successEdit": "Campo atualizado.",
+                "error": "Não foi possível salvar o campo."
+            },
+            "toggle": {
+                "activate": "Reativar",
+                "deactivate": "Desativar",
+                "activated": "Campo reativado.",
+                "deactivated": "Campo desativado.",
+                "error": "Não foi possível atualizar a situação."
+            }
         }
     },
     "pagination": {

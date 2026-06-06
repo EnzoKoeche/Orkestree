@@ -78,7 +78,9 @@ export const SYSTEM_DEFAULTS: Record<Role, DefaultMap> = {
         // EDIT. APPROVE/REJECT/DELETE stay with OWNER/ADMIN — sending and
         // approving a proposal is a commercial decision, not an operator one.
         [CompanyResource.PROPOSAL]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true, [PermissionAction.EDIT]: true },
-        [CompanyResource.TASK]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true, [PermissionAction.EDIT]: true },
+        // ASSIGN added so the operator can hand internal tasks to colleagues
+        // (the pilot operator organizes the team's work).
+        [CompanyResource.TASK]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true, [PermissionAction.EDIT]: true, [PermissionAction.ASSIGN]: true },
         [CompanyResource.DOCUMENT]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true },
         [CompanyResource.CHAT]: { [PermissionAction.VIEW]: true, [PermissionAction.CREATE]: true },
     },

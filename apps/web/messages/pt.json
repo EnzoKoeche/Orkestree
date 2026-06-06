@@ -400,13 +400,15 @@
                 "noHistory": "Nenhuma movimentação ainda."
             },
             "tasks": {
-                "empty": "Nenhuma tarefa vinculada a este pedido.",
+                "title": "Tarefas",
+                "empty": "Nenhuma tarefa vinculada a este pedido ainda.",
                 "columns": {
                     "number": "Tarefa",
                     "title": "Título",
                     "status": "Status",
                     "assignee": "Responsável",
-                    "createdAt": "Criada em"
+                    "createdAt": "Criada em",
+                    "actions": "Ações"
                 },
                 "status": {
                     "OPEN": "Aberta",
@@ -414,7 +416,47 @@
                     "DONE": "Concluída",
                     "CANCELLED": "Cancelada"
                 },
-                "noAssignee": "Sem responsável"
+                "noAssignee": "Sem responsável",
+                "create": {
+                    "trigger": "Nova tarefa",
+                    "cancelledTooltip": "Não é possível criar tarefa em um pedido cancelado",
+                    "title": "Nova tarefa",
+                    "description": "Crie uma tarefa interna para este pedido.",
+                    "fields": {
+                        "title": "Título",
+                        "description": "Descrição",
+                        "priority": "Prioridade",
+                        "dueAt": "Prazo"
+                    },
+                    "priority": {
+                        "LOW": "Baixa",
+                        "NORMAL": "Normal",
+                        "HIGH": "Alta",
+                        "URGENT": "Urgente"
+                    },
+                    "errors": {
+                        "titleRequired": "Informe um título para a tarefa.",
+                        "titleTooLong": "Título muito longo (máx. 256 caracteres).",
+                        "descriptionTooLong": "Descrição muito longa (máx. 4096 caracteres).",
+                        "dueAtInvalid": "Data inválida."
+                    },
+                    "cancel": "Cancelar",
+                    "submit": "Criar tarefa",
+                    "submitting": "Criando…",
+                    "success": "Tarefa criada.",
+                    "error": "Não foi possível criar a tarefa."
+                },
+                "transition": {
+                    "trigger": "Mover",
+                    "success": "Tarefa movida para {status}.",
+                    "error": "Não foi possível mover a tarefa.",
+                    "to": {
+                        "OPEN": "Reabrir",
+                        "IN_PROGRESS": "Iniciar",
+                        "DONE": "Concluir",
+                        "CANCELLED": "Cancelar tarefa"
+                    }
+                }
             },
             "proposals": {
                 "title": "Propostas",

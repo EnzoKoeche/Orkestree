@@ -158,7 +158,7 @@ export default async function RequestDetailPage({
                     }}
                     details={<DetailsTab request={detail} fieldValues={fieldValues} />}
                     workflow={<WorkflowTab request={detail} />}
-                    tasks={<TasksTab tasks={tasks} />}
+                    tasks={<TasksTab tasks={tasks} request={detail} />}
                     proposals={<ProposalsTab proposals={proposals} request={detail} />}
                     history={<HistoryTab request={detail} />}
                 />

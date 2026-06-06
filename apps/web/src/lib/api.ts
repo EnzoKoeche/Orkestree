@@ -8,6 +8,7 @@ import type {
     CreateProposalItemPayload,
     CreateProposalPayload,
     CreateServiceRequestPayload,
+    CreateTaskPayload,
     CustomFieldListItem,
     ListClientsParams,
     ListCustomFieldsParams,
@@ -25,6 +26,7 @@ import type {
     SetFieldValueItem,
     TaskListItem,
     TransitionStagePayload,
+    TransitionTaskPayload,
     UpdateClientPayload,
     UpdateProposalItemPayload,
 } from '@/types/domain';
@@ -407,6 +409,39 @@ export const tasksApi = {
                     limit: params.limit,
                     skip: params.skip,
                 },
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateTaskPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<TaskListItem>(
+            `/companies/${encodeURIComponent(companyId)}/tasks`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    transition(
+        companyId: string,
+        taskId: string,
+        payload: TransitionTaskPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<TaskListItem>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/transition`,
+            {
+                method: 'POST',
+                body: payload,
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

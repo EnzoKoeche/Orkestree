@@ -310,6 +310,26 @@ export interface ListTasksParams {
     skip?: number;
 }
 
+/** Payload for POST /companies/:companyId/tasks (mirror of CreateTaskDto). */
+export interface CreateTaskPayload {
+    requestId: string;
+    /** 1–256 chars. */
+    title: string;
+    /** ≤4096 chars. */
+    description?: string;
+    priority?: TaskPriority;
+    /** ISO-8601 datetime (date input serialized to UTC midnight). */
+    dueAt?: string;
+}
+
+/** Payload for POST /tasks/:id/transition (mirror of TransitionTaskDto). The
+ *  backend enforces the legal state machine; the UI offers only legal moves
+ *  but a 422 is surfaced as a toast if it ever races. */
+export interface TransitionTaskPayload {
+    toStatus: TaskStatus;
+    note?: string;
+}
+
 // ── Clients (mirror of GET /companies/:companyId/clients) ───────────────────
 //
 // Plain array response (no pagination wrapper). search query is server-side

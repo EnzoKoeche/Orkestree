@@ -11,6 +11,7 @@ import type {
     CreateCommentPayload,
     CreateProposalPayload,
     CreateServiceRequestPayload,
+    CreateServiceTypePayload,
     CreateTaskPayload,
     CustomFieldListItem,
     ListClientsParams,
@@ -25,6 +26,7 @@ import type {
     RequestFieldValue,
     ServiceRequestDetail,
     ServiceRequestListItem,
+    ServiceTypeDetail,
     ServiceTypeListItem,
     SetFieldValueItem,
     TaskComment,
@@ -33,6 +35,7 @@ import type {
     TransitionTaskPayload,
     UpdateClientPayload,
     UpdateProposalItemPayload,
+    UpdateServiceTypePayload,
 } from '@/types/domain';
 import { request } from './http';
 
@@ -364,6 +367,63 @@ export const serviceTypesApi = {
         return request<ServiceTypeListItem[]>(
             `/companies/${encodeURIComponent(companyId)}/config/service-types`,
             {
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    get(companyId: string, serviceTypeId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<ServiceTypeDetail>(
+            `/companies/${encodeURIComponent(companyId)}/config/service-types/${encodeURIComponent(serviceTypeId)}`,
+            { tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    create(
+        companyId: string,
+        payload: CreateServiceTypePayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ServiceTypeListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/service-types`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    update(
+        companyId: string,
+        serviceTypeId: string,
+        payload: UpdateServiceTypePayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<ServiceTypeListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/service-types/${encodeURIComponent(serviceTypeId)}`,
+            {
+                method: 'PATCH',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    setActive(
+        companyId: string,
+        serviceTypeId: string,
+        active: boolean,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        const action = active ? 'activate' : 'deactivate';
+        return request<ServiceTypeListItem>(
+            `/companies/${encodeURIComponent(companyId)}/config/service-types/${encodeURIComponent(serviceTypeId)}/${action}`,
+            {
+                method: 'POST',
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

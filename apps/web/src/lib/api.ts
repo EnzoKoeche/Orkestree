@@ -8,6 +8,7 @@ import type {
     ClientListItem,
     CreateClientPayload,
     CreateProposalItemPayload,
+    CreateCommentPayload,
     CreateProposalPayload,
     CreateServiceRequestPayload,
     CreateTaskPayload,
@@ -26,6 +27,7 @@ import type {
     ServiceRequestListItem,
     ServiceTypeListItem,
     SetFieldValueItem,
+    TaskComment,
     TaskListItem,
     TransitionStagePayload,
     TransitionTaskPayload,
@@ -481,6 +483,48 @@ export const tasksApi = {
             `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/unassign`,
             {
                 method: 'POST',
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    // ── Comments (EPIC C / C3) ───────────────────────────────────────────────
+
+    listComments(companyId: string, taskId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<TaskComment[]>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/comments`,
+            { tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
+    },
+
+    addComment(
+        companyId: string,
+        taskId: string,
+        payload: CreateCommentPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<TaskComment>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/comments`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    deleteComment(
+        companyId: string,
+        taskId: string,
+        commentId: string,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<void>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
+            {
+                method: 'DELETE',
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

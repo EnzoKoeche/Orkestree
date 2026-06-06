@@ -335,6 +335,21 @@ export interface AssignTaskPayload {
     membershipId: string;
 }
 
+/** A task comment (GET /tasks/:id/comments — mirror of COMMENT_SELECT). */
+export interface TaskComment {
+    id: string;
+    body: string;
+    createdAt: string;
+    updatedAt: string;
+    authorMembership: MembershipRef;
+}
+
+/** Payload for POST /tasks/:id/comments (mirror of CreateCommentDto). */
+export interface CreateCommentPayload {
+    /** 1–4096 chars. */
+    body: string;
+}
+
 // ── Company member directory (GET /companies/:companyId/memberships — EPIC B2) ─
 //
 // Active internal members (CLIENTE excluded) for assignee pickers. Minimal

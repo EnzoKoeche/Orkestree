@@ -464,6 +464,20 @@
                     "assigned": "Responsável definido.",
                     "cleared": "Responsável removido.",
                     "error": "Não foi possível atualizar o responsável."
+                },
+                "comments": {
+                    "subtitle": "Comentários",
+                    "loading": "Carregando comentários…",
+                    "loadError": "Não foi possível carregar os comentários.",
+                    "empty": "Nenhum comentário ainda.",
+                    "delete": "Remover comentário",
+                    "deleteError": "Não foi possível remover o comentário.",
+                    "addError": "Não foi possível adicionar o comentário.",
+                    "addLabel": "Novo comentário",
+                    "placeholder": "Escreva um comentário…",
+                    "send": "Comentar",
+                    "sending": "Enviando…",
+                    "cancelledHint": "Tarefa cancelada não aceita novos comentários."
                 }
             },
             "proposals": {

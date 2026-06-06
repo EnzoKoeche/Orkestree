@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import type {
-    MembershipRef,
+    CompanyMember,
     ServiceRequestDetail,
     TaskListItem,
     TaskStatus,
 } from '@/types/domain';
 import { NewTaskButton } from '../NewTaskButton';
+import { TaskAssigneePicker } from '../TaskAssigneePicker';
 import { TaskTransitionMenu } from '../TaskTransitionMenu';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,17 +36,14 @@ const STATUS_PILL_CLASS: Record<TaskStatus, string> = {
     CANCELLED: 'bg-muted text-muted-foreground ring-1 ring-border',
 };
 
-function memberName(m: MembershipRef | null): string | null {
-    if (!m) return null;
-    return `${m.user.firstName} ${m.user.lastName}`.trim() || m.user.firstName;
-}
-
 export async function TasksTab({
     tasks,
     request,
+    members,
 }: {
     tasks: TaskListItem[];
     request: ServiceRequestDetail;
+    members: CompanyMember[];
 }) {
     const t = await getTranslations('requests.detail.tasks');
 
@@ -77,7 +75,6 @@ export async function TasksTab({
                         </TableHeader>
                         <TableBody>
                             {tasks.map((task) => {
-                                const assignee = memberName(task.assignedMembership);
                                 return (
                                     <TableRow key={task.id}>
                                         <TableCell className="font-medium tabular-nums text-muted-foreground">
@@ -96,12 +93,12 @@ export async function TasksTab({
                                                 {t(`status.${task.status}`)}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-sm text-foreground">
-                                            {assignee ?? (
-                                                <span className="text-muted-foreground">
-                                                    {t('noAssignee')}
-                                                </span>
-                                            )}
+                                        <TableCell>
+                                            <TaskAssigneePicker
+                                                taskId={task.id}
+                                                assignedMembership={task.assignedMembership}
+                                                members={members}
+                                            />
                                         </TableCell>
                                         <TableCell>
                                             <DateCell iso={task.createdAt} />

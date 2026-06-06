@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LoadingState } from '@/components/ui/States';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { proposalsApi, requestsApi, tasksApi } from '@/lib/api';
+import { membershipsApi, proposalsApi, requestsApi, tasksApi } from '@/lib/api';
 import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import type {
     AvailableTransition,
+    CompanyMember,
     ProposalListItem,
     RequestFieldValue,
     ServiceRequestDetail,
@@ -81,10 +82,11 @@ export default async function RequestDetailPage({
     let fieldValues: RequestFieldValue[];
     let tasks: TaskListItem[];
     let proposals: ProposalListItem[];
+    let members: CompanyMember[];
     let availableTransitions: AvailableTransition[];
 
     try {
-        [detail, fieldValues, tasks, proposals, availableTransitions] = await Promise.all([
+        [detail, fieldValues, tasks, proposals, members, availableTransitions] = await Promise.all([
             requestsApi.get(activeCompanyId, params.id, { tokenOverride: token }),
             requestsApi.getFieldValues(activeCompanyId, params.id, { tokenOverride: token }),
             tasksApi
@@ -104,6 +106,12 @@ export default async function RequestDetailPage({
                     { tokenOverride: token },
                 )
                 .catch(() => [] as ProposalListItem[]),
+            // Best-effort: member directory for the task assignee picker. A
+            // failure (or a role that can't list) degrades the picker to a
+            // read-only assignee name rather than blocking the page.
+            membershipsApi
+                .listCompany(activeCompanyId, { tokenOverride: token })
+                .catch(() => [] as CompanyMember[]),
             // Best-effort: viewers without REQUEST.EDIT (FINANCEIRO, CLIENTE)
             // get a 403 here. The TransitionMenu's role gate hides itself for
             // those roles anyway, so an empty array is the right fallback —
@@ -158,7 +166,7 @@ export default async function RequestDetailPage({
                     }}
                     details={<DetailsTab request={detail} fieldValues={fieldValues} />}
                     workflow={<WorkflowTab request={detail} />}
-                    tasks={<TasksTab tasks={tasks} request={detail} />}
+                    tasks={<TasksTab tasks={tasks} request={detail} members={members} />}
                     proposals={<ProposalsTab proposals={proposals} request={detail} />}
                     history={<HistoryTab request={detail} />}
                 />

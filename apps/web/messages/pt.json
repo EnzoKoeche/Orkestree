@@ -456,6 +456,14 @@
                         "DONE": "Concluir",
                         "CANCELLED": "Cancelar tarefa"
                     }
+                },
+                "assign": {
+                    "unassigned": "Sem responsável",
+                    "assign": "Atribuir",
+                    "clear": "Sem responsável",
+                    "assigned": "Responsável definido.",
+                    "cleared": "Responsável removido.",
+                    "error": "Não foi possível atualizar o responsável."
                 }
             },
             "proposals": {

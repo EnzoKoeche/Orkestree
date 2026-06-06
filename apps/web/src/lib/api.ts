@@ -1,6 +1,8 @@
 import type {
+    AssignTaskPayload,
     AvailableTransition,
     CancelRequestPayload,
+    CompanyMember,
     ClientDetail,
     ClientFieldValue,
     ClientListItem,
@@ -58,6 +60,15 @@ export const membershipsApi = {
      */
     me(signal?: AbortSignal) {
         return request<MembershipsMeResponse>('/memberships/me', { signal });
+    },
+
+    /** Active internal members of the company, for assignee pickers (EPIC B2).
+     *  Server Components pass tokenOverride. */
+    listCompany(companyId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<CompanyMember[]>(
+            `/companies/${encodeURIComponent(companyId)}/memberships`,
+            { tokenOverride: opts.tokenOverride, signal: opts.signal },
+        );
     },
 };
 
@@ -442,6 +453,34 @@ export const tasksApi = {
             {
                 method: 'POST',
                 body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    assign(
+        companyId: string,
+        taskId: string,
+        payload: AssignTaskPayload,
+        opts: ListServiceRequestsOptions = {},
+    ) {
+        return request<TaskListItem>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/assign`,
+            {
+                method: 'POST',
+                body: payload,
+                tokenOverride: opts.tokenOverride,
+                signal: opts.signal,
+            },
+        );
+    },
+
+    unassign(companyId: string, taskId: string, opts: ListServiceRequestsOptions = {}) {
+        return request<TaskListItem>(
+            `/companies/${encodeURIComponent(companyId)}/tasks/${encodeURIComponent(taskId)}/unassign`,
+            {
+                method: 'POST',
                 tokenOverride: opts.tokenOverride,
                 signal: opts.signal,
             },

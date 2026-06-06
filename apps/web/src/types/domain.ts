@@ -330,6 +330,27 @@ export interface TransitionTaskPayload {
     note?: string;
 }
 
+/** Payload for POST /tasks/:id/assign (mirror of AssignTaskDto). */
+export interface AssignTaskPayload {
+    membershipId: string;
+}
+
+// ── Company member directory (GET /companies/:companyId/memberships — EPIC B2) ─
+//
+// Active internal members (CLIENTE excluded) for assignee pickers. Minimal
+// projection: membership id + role + user identity. Shaped as MembershipRef
+// plus role, so it's assignable wherever a MembershipRef is rendered.
+export interface CompanyMember {
+    id: string;
+    role: Role;
+    user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        avatarUrl: string | null;
+    };
+}
+
 // ── Clients (mirror of GET /companies/:companyId/clients) ───────────────────
 //
 // Plain array response (no pagination wrapper). search query is server-side

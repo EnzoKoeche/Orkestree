@@ -17,6 +17,7 @@ import type {
 } from '@/types/domain';
 import { NewTaskButton } from '../NewTaskButton';
 import { TaskAssigneePicker } from '../TaskAssigneePicker';
+import { TaskCommentsDialog } from '../TaskCommentsDialog';
 import { TaskTransitionMenu } from '../TaskTransitionMenu';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,8 +81,8 @@ export async function TasksTab({
                                         <TableCell className="font-medium tabular-nums text-muted-foreground">
                                             #{task.number}
                                         </TableCell>
-                                        <TableCell className="font-medium text-foreground">
-                                            {task.title}
+                                        <TableCell>
+                                            <TaskCommentsDialog task={task} />
                                         </TableCell>
                                         <TableCell>
                                             <span

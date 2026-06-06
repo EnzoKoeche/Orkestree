@@ -549,6 +549,32 @@ export interface UpdateServiceTypePayload {
     description?: string | null;
 }
 
+// ── Workflows (GET /config/workflows — EPIC D / D3, read-only view) ──────────
+//
+// The list endpoint embeds each workflow's stages (ordered by sortOrder), so
+// one fetch renders the whole view. Transitions are a separate endpoint and
+// out of scope for the read-only view.
+export interface WorkflowStage {
+    id: string;
+    code: string;
+    name: string;
+    color: string | null;
+    sortOrder: number;
+    isInitial: boolean;
+    isFinal: boolean;
+    isActive: boolean;
+}
+
+export interface WorkflowListItem {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    isDefault: boolean;
+    isActive: boolean;
+    stages: WorkflowStage[];
+}
+
 // ── Create Service Request payload ──────────────────────────────────────────
 
 export interface SetFieldValueItem {

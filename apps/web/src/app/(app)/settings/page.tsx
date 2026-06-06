@@ -1,4 +1,4 @@
-import { Wrench } from 'lucide-react';
+import { ListChecks, Wrench } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { EmptyTable } from '@/components/ui/EmptyTable';
 import { LoadingState } from '@/components/ui/States';
@@ -11,11 +11,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { serviceTypesApi } from '@/lib/api';
+import { customFieldsApi, serviceTypesApi } from '@/lib/api';
 import { ApiError } from '@/lib/http';
 import { getServerSession } from '@/lib/server-session';
 import { cn } from '@/lib/utils';
-import type { ServiceTypeListItem } from '@/types/domain';
+import type { CustomFieldListItem, ServiceTypeListItem } from '@/types/domain';
+import { CustomFieldFormDialog } from './_components/CustomFieldFormDialog';
+import { CustomFieldStatusToggle } from './_components/CustomFieldStatusToggle';
 import { ServiceTypeFormDialog } from './_components/ServiceTypeFormDialog';
 import { ServiceTypeStatusToggle } from './_components/ServiceTypeStatusToggle';
 
@@ -42,8 +44,12 @@ export default async function SettingsPage() {
     }
 
     let serviceTypes: ServiceTypeListItem[];
+    let customFields: CustomFieldListItem[];
     try {
-        serviceTypes = await serviceTypesApi.list(activeCompanyId, { tokenOverride: token });
+        [serviceTypes, customFields] = await Promise.all([
+            serviceTypesApi.list(activeCompanyId, { tokenOverride: token }),
+            customFieldsApi.list(activeCompanyId, {}, { tokenOverride: token }),
+        ]);
     } catch (err) {
         const noAccess = err instanceof ApiError && err.status === 403;
         return (
@@ -140,6 +146,102 @@ export default async function SettingsPage() {
                                             <div className="flex items-center justify-end gap-1">
                                                 <ServiceTypeFormDialog serviceType={st} />
                                                 <ServiceTypeStatusToggle serviceType={st} />
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        )}
+                    </Table>
+                </div>
+            </section>
+
+            <section className="mt-10">
+                <div className="mb-3 flex items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-sm font-semibold text-foreground">
+                            {t('customFields.title')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {t('customFields.subtitle')}
+                        </p>
+                    </div>
+                    <CustomFieldFormDialog />
+                </div>
+
+                <div className="overflow-hidden rounded-md border bg-card">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{t('customFields.columns.label')}</TableHead>
+                                <TableHead className="w-[120px]">
+                                    {t('customFields.columns.type')}
+                                </TableHead>
+                                <TableHead className="w-[120px]">
+                                    {t('customFields.columns.target')}
+                                </TableHead>
+                                <TableHead className="w-[110px]">
+                                    {t('customFields.columns.required')}
+                                </TableHead>
+                                <TableHead className="w-[100px]">
+                                    {t('customFields.columns.status')}
+                                </TableHead>
+                                <TableHead className="w-[180px] text-right">
+                                    {t('customFields.columns.actions')}
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+
+                        {customFields.length === 0 ? (
+                            <TableBody>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={6} className="p-0">
+                                        <EmptyTable
+                                            icon={ListChecks}
+                                            title={t('customFields.empty.title')}
+                                            description={t('customFields.empty.description')}
+                                            action={<CustomFieldFormDialog />}
+                                        />
+                                    </TableCell>
+                                </TableRow>
+                            </TableBody>
+                        ) : (
+                            <TableBody>
+                                {customFields.map((f) => (
+                                    <TableRow key={f.id} className={cn(!f.isActive && 'opacity-60')}>
+                                        <TableCell className="font-medium text-foreground">
+                                            {f.label}
+                                            <span className="ml-2 font-mono text-xs text-muted-foreground">
+                                                {f.code}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {t(`customFields.types.${f.type}`)}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {t(`customFields.targets.${f.target}`)}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {f.isRequired ? t('customFields.required') : '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span
+                                                className={cn(
+                                                    'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                                                    f.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                        : 'bg-muted text-muted-foreground ring-1 ring-border',
+                                                )}
+                                            >
+                                                {f.isActive
+                                                    ? t('serviceTypes.status.active')
+                                                    : t('serviceTypes.status.inactive')}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <CustomFieldFormDialog field={f} />
+                                                <CustomFieldStatusToggle field={f} />
                                             </div>
                                         </TableCell>
                                     </TableRow>

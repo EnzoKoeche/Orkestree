@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CompanyMembershipsController } from './company-memberships.controller';
 import { MembershipsController } from './memberships.controller';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,6 +16,6 @@ import { MembershipsController } from './memberships.controller';
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Module({
-    controllers: [MembershipsController],
+    controllers: [MembershipsController, CompanyMembershipsController],
 })
 export class MembershipsModule { }

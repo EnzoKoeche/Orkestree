@@ -676,6 +676,72 @@
             }
         }
     },
+    "settings": {
+        "title": "Configurações",
+        "subtitle": "Configure os tipos de serviço, campos e fluxos da sua empresa.",
+        "noAccess": {
+            "title": "Acesso restrito",
+            "description": "Apenas donos e administradores podem acessar as configurações da empresa."
+        },
+        "serviceTypes": {
+            "title": "Tipos de serviço",
+            "subtitle": "Os serviços que sua empresa oferece (ex.: Prótese dentária 3D).",
+            "errorTitle": "Não foi possível carregar os tipos de serviço",
+            "errorFallback": "Tente novamente em instantes.",
+            "columns": {
+                "code": "Código",
+                "name": "Nome",
+                "status": "Situação",
+                "actions": "Ações"
+            },
+            "status": {
+                "active": "Ativo",
+                "inactive": "Inativo"
+            },
+            "empty": {
+                "title": "Nenhum tipo de serviço ainda",
+                "description": "Cadastre os serviços que sua empresa oferece para começar a registrar pedidos."
+            },
+            "form": {
+                "createTrigger": "Novo tipo",
+                "editTrigger": "Editar",
+                "createTitle": "Novo tipo de serviço",
+                "editTitle": "Editar tipo de serviço",
+                "description": "Tipos de serviço aparecem ao criar um pedido.",
+                "loading": "Carregando…",
+                "fields": {
+                    "code": "Código",
+                    "codePlaceholder": "ex.: protese_dentaria_3d",
+                    "codeHint": "Identificador interno (minúsculas, números e _). Não pode ser alterado depois.",
+                    "codeLocked": "O código não pode ser alterado após a criação.",
+                    "name": "Nome",
+                    "description": "Descrição"
+                },
+                "errors": {
+                    "codeRequired": "Informe um código (mín. 2 caracteres).",
+                    "codeTooLong": "Código muito longo (máx. 64 caracteres).",
+                    "codePattern": "Use só minúsculas, números e _, começando por letra.",
+                    "nameRequired": "Informe o nome do tipo de serviço.",
+                    "nameTooLong": "Nome muito longo (máx. 128 caracteres).",
+                    "descriptionTooLong": "Descrição muito longa (máx. 512 caracteres)."
+                },
+                "cancel": "Cancelar",
+                "saveCreate": "Criar tipo",
+                "saveEdit": "Salvar alterações",
+                "submitting": "Salvando…",
+                "successCreate": "Tipo de serviço criado.",
+                "successEdit": "Tipo de serviço atualizado.",
+                "error": "Não foi possível salvar o tipo de serviço."
+            },
+            "toggle": {
+                "activate": "Reativar",
+                "deactivate": "Desativar",
+                "activated": "Tipo de serviço reativado.",
+                "deactivated": "Tipo de serviço desativado.",
+                "error": "Não foi possível atualizar a situação."
+            }
+        }
+    },
     "pagination": {
         "previous": "Anterior",
         "next": "Próxima",

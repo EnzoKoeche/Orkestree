@@ -497,6 +497,27 @@ export interface ServiceTypeListItem {
     isActive: boolean;
 }
 
+/** Full service type (GET /config/service-types/:id — mirror of DETAIL_SELECT). */
+export interface ServiceTypeDetail extends ServiceTypeListItem {
+    description: string | null;
+    sortOrder: number;
+}
+
+/** Payload for POST /config/service-types (mirror of CreateServiceTypeDto).
+ *  code is snake_case and immutable after creation. workflowId omitted here ⇒
+ *  null ⇒ resolves to the company default workflow when a request is created. */
+export interface CreateServiceTypePayload {
+    code: string;
+    name: string;
+    description?: string;
+}
+
+/** Payload for PATCH /config/service-types/:id (code is NOT editable). */
+export interface UpdateServiceTypePayload {
+    name?: string;
+    description?: string | null;
+}
+
 // ── Create Service Request payload ──────────────────────────────────────────
 
 export interface SetFieldValueItem {
